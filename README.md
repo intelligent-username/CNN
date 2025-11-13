@@ -1,6 +1,6 @@
-# CNN
+# Convoluational Neural Networks
 
-![The Plains of heaven by John Martin, 1853](imgs/cover.jpg)
+![The Orrery by Joseph Wright of Arbey, 1766](imgs/cover.jpg)
 
 *Note: This writeup assumes background knowledge about [backpropogation and dense networks](https://github.com/intelligent-username/Backpropagation)
 
@@ -18,9 +18,6 @@ By building this feature-specific complexity into your model, you prepare it to 
 
 - A **feedforward network** is just a neural network that that feeds the data 'forward', i.e. from input to output, passing through functions smoothly without any loops or cycles.
 - A **convolution** the function resulting from the operation $(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)g(t-\tau)d\tau$ that tells us how the shape of one function is modified by another. In the context of CNNs, convolutions are used to extract features from images by applying filters (kernels) to the input pixels, so we're often working with discrete convolutions instead of continuous integrals. More on this later.
-- **Kernel**: A small matrix used to apply effects such as blurring, sharpening, edge detection, etc. to images.
-- **Feature Map**: The output of a convolutional layer after applying the kernel to the input image.
-- **Stride**: The number of pixels by which the kernel moves across the image.
 
 ## Math
 
@@ -112,40 +109,69 @@ For example, this is the resultant feature map after we apply a Laplacian edge-d
 
 ![Laplacian Edge Detection Example](imgs/laplace.png)
 
-### Strides , Padding, and Pooling
+### Size, Strides, Padding, and Pooling
 
-### Strides, Padding, and Pooling
+Just like other machine learning tasks, CNNs have hyperparameters that we can tune to improve performance and efficiency. The hyperparameters that are unique to CNNs are **size**, **strides**, **padding**, and **pooling**.
 
-In convolutional neural networks, controlling the spatial behavior of the kernel and managing feature map size is crucial. This is done through **strides**, **padding**, and **pooling**.
+The **size** of the kernel are its dimensions. For example, a $3 \times 3$ kernel has a height and width of 3 pixels each. If we have a $1 \times 1$ kernel, then we're simply multiplying each pixel by a weight, which is equivalent to a Dense layer. Larger kernels can capture more complex features, but they also increase computational cost and may lead to overfitting. They may also give rise to overfitting.
 
-**Strides** determine how far the kernel moves at each step across the input. A stride of 1 shifts the kernel one pixel at a time, producing a densely sampled output. Larger strides skip pixels, generating smaller feature maps and reducing computation.
+**Strides** determine how far the kernel moves at each step across the input. For example, if the stride is 1, we itereate through every pixel, whereas if the stride is 2, we skip every other pixel, and so forth. Increasing the stride will reduce the dimensions of the feature map, which can help reduce computational cost. Of course, it comes at the cost of detail.
 
-**Padding** addresses the problem of shrinking feature maps at the borders. Without padding, the kernel cannot fully cover edge pixels, causing the output to be smaller than the input. **Zero-padding** adds rows and columns of zeros around the input, preserving spatial dimensions and allowing edge information to contribute fully to the output.
+Whenever our kernel size is greater than one, we are bound to go 'outside' of the input's dimensions whenever we are at or near the edges. This may result in literal program crashes if we're not careful or strange, undefined behaviour if we choose to, say, wrap around the edges when we reach them. One possible solution is to add **padding**. Padding pixels are simply just a border around the original image that have some sort of pre-defined behaviour. **Zero-padding** is when we add rows and columns of zeros around the input. Without padding, we risk having the feature map be smaller than the input, which means that we have lost information.
 
-**Pooling** is a downsampling operation applied to feature maps to reduce dimensionality while retaining essential information. Common types include:
+If we happen to have too much data, or data that is redundant, we use pooling as a sort of 'compression'. **Pooling** is when we look at some window of data in an image and extract the parts of it that we need, discarding the rest. For example, when looking at a pixel, we may only care about the value of the $3 \times 3$ grid surrounding it, and so we may take the average of those 9 pixels and write them all as a single one. Pooling is similar to changing the stride in that it helps us get rid of unnecessary data, but in this case it is an intentional and specific transformation of the inputs.
+Note that pooling is not part of the convolution operation, rather it's a step applied before/after it to reduce or standardize the size of the data.
 
-- **Max pooling**: selects the maximum value within each patch (e.g., (2 \times 2)), emphasizing the strongest activations.
-- **Average pooling**: computes the mean within each patch, smoothing the representation.
+### Backprop & Review
 
-Pooling increases **translation invariance**: small shifts in features do not strongly affect the output, and reduces computational cost.
+So now, we have all of these different operations: A network composed of layers, which are composed of neurons, which in turn have their own connections, activations, weights and convolutions, as well as some hyperparameters that we can tune. Once we find the optimal combination of these things, we can use backpropogation to find the actual weights that the model will use.
 
-Together, strides, padding, and pooling allow CNNs to extract spatially meaningful features efficiently, controlling both resolution and computation across layers.
+Of course, use [gradient descent](https://www.github.com/intelligent-username/Gradient-Descent) to minimize the loss function, add whatever [regularization](https://www.github.com/intelligent-username/Regularization) we may need, etc. etc. Let's quickly review how it works in order to see what's going on behind the scenes.
 
-### Backprop Review
+First, there is the forward pass. At this stage, we take our current weights and biases, and use them to calculate the output of the network. This involves applying the convolutional operations, activations, and any other transformations that are part of the network architecture.
+
+Then, we use that to find the loss. This is just to get an idea of hwo good our model is so far.
+
+Now, importantly, we find the partial derivatives of the loss function with respect to the weights, and we use them to construct the gradient. This is where the *backpropogation* itself actually comes in. The technique here is to use the chain rule "inside out", wherein we start from the output layer and work our way back to the input layer, calculating the gradients at each step. It's not inherently faster than calculating the gradient "outside in", but, since we can cache the intermediate results, we can save some time since neurons in earlier layers share the same downstream paths.
+Finally, we use the gradient to update the weights using whatever optimization algorithm that we're using.
+
+### Finally
+
+Let's take these ideas and see how we can use a convolution to transform an image.
+
+Take the following $630 \times 630$px image:
+
+<img src="imgs/tree.png" alt="Original Image" width="300px">
+
+Let's apply a grayscale filter and then trace it's vertical lines using the following kernel:
+
+$$
+% Matrix
+\begin{bmatrix}
+-1, 0, 1 \\
+-1, 0, 1 \\
+-1, 0, 1 \\
+\end{bmatrix}
+$$
+
+We also have padding of 2 pixels, kernel size of 5 by 5, and a stride of 1.
+
+The processing goes as follows:
+
+![Processing](imgs/convoluting.gif)
+
+<!-- Original image source: openclipart -->
+<!-- https://openclipart.org/detail/310230/rudolph-christmas-tree-construction-paper -->
+
+Now, this processed image would be ready to passed into the rest of the network for processing. (Also, ignore the low-quality gif and the compression).
 
 ## Architecture
 
-### Convolutional Layers
+![Summarative Diagram](imgs/summary.png)
 
-### Pooling Layers
+Now that we understand all this math, let's quickly go over how a CNN is actually implemented in code. The key is to think of a CNN as a feedforward network that has some number of initial layers responsible for feature extraction, followed by some number of Dense layers for learning/regression and a final layer for [classification](https://www.github.com/intelligent-username/Classification).
 
-### Fully Connected Layers
-
-### Feature Extraction
-
-### Classifiers
-
-## Algorithm
+We simply implement this in code and we're done!
 
 ---
 
