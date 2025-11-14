@@ -24,7 +24,7 @@ A Convolutional Neural Network (CNN) is a type of deep learning algorithm primar
     - [AlexNet](#alexnet)
     - [VGG](#vgg)
     - [ResNet](#resnet)
-  - [Architectures](#architectures)
+  - [Other Considerations](#other-considerations)
 
 ## Motivation
 
@@ -104,7 +104,7 @@ Now, the point of these convolutions, in this context, isn't necessarily to appl
 In **discrete** form, we can write the convolution as:
 
 $$
-(f * g)(i, j) = \sum_m \sum_n f[m, n], g[i - m, j - n]
+(f * g)(i, j) = \sum_m \sum_n f[m, n] g[i - m, j - n]
 $$
 
 #### Kernels
@@ -116,7 +116,7 @@ The kernel slides across the image, applying it's operation to every single pixe
 In mathematical form, we can write this as:
 
 $$
-y_{i,j} = \sum_{m,n} x_{i+m,, j+n} \cdot k_{m,n}
+y_{i,j} = \sum_{m,n} x_{i+m, j+n} \cdot k_{m,n}
 $$
 
 Upon doing this, we have whatever local patterns that the kernel is designed to detect highlighted in the output. This may be the edges, corners, or something else.
@@ -140,7 +140,7 @@ The **size** of the kernel are its dimensions. For example, a $3 \times 3$ kerne
 Whenever our kernel size is greater than one, we are bound to go 'outside' of the input's dimensions whenever we are at or near the edges. This may result in literal program crashes if we're not careful or strange, undefined behaviour if we choose to, say, wrap around the edges when we reach them. One possible solution is to add **padding**. Padding pixels are simply just a border around the original image that have some sort of pre-defined behaviour. **Zero-padding** is when we add rows and columns of zeros around the input. Without padding, we risk having the feature map be smaller than the input, which means that we have lost information.
 
 If we happen to have too much data, or data that is redundant, we use pooling as a sort of 'compression'. **Pooling** is when we look at some window of data in an image and extract the parts of it that we need, discarding the rest. For example, when looking at a pixel, we may only care about the value of the $3 \times 3$ grid surrounding it, and so we may take the average of those 9 pixels and write them all as a single one. Pooling is similar to changing the stride in that it helps us get rid of unnecessary data, but in this case it is an intentional and specific transformation of the inputs. When changing the stride size, we simply skip over the data, but in pooling we intentionally recombine it. Also, the pooling comes after the convolution whereas the stride comes before.
-Note that pooling is not part of the convolution operation, rather it's a step applied before/after it to reduce or standardize the size of the data.
+Note that pooling is not part of the convolution operation, rather it's a step applied after it to reduce or standardize the size of the data.
 
 In addition to these factors, we can tweak other hyperparameters that are common to all neural networks, such as the learning rate, number of layers, number of neurons per layer, activation functions, as well as context-specific parameters such as the *number* of kernels.
 
@@ -173,9 +173,9 @@ Let's apply a grayscale filter and then trace it's vertical lines using the foll
 $$
 % Matrix
 \begin{bmatrix}
--1, 0, 1 \\
--1, 0, 1 \\
--1, 0, 1 \\
+-1 & 0 & 1 \\
+-1 & 0 & 1 \\
+-1 & 0 & 1 \\
 \end{bmatrix}
 $$
 
@@ -238,7 +238,7 @@ VGG (Visual Geometry Group) networks, developed by the University of Oxford, are
 
 ResNet (Residual Network) introduced the concept of residual connections, which help mitigate the vanishing gradient problem in deep networks. ResNet architectures can be very deep, with versions like ResNet50 and ResNet101 having 50 and 101 layers, respectively. The residual connections allow gradients to flow more easily through the network during backpropagation, enabling the training of much deeper models.
 
-## Architectures
+## Other Considerations
 
 In addition to the core CNN architecture, there are several add-ons and techniques that can enhance performance:
 
