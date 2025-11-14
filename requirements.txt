@@ -1,4 +1,8 @@
-torch==2.2.0
-torchvision==0.17.1
-pandas==2.1.1
-numpy==1.27.4
+torch
+torchvision
+pandas
+numpy
+
+# Not necessary unless you want to run display.py
+idx2numpy
+matplotlib

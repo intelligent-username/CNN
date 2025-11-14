@@ -25,6 +25,10 @@ A Convolutional Neural Network (CNN) is a type of deep learning algorithm primar
     - [VGG](#vgg)
     - [ResNet](#resnet)
   - [Other Considerations](#other-considerations)
+  - [Project Details](#project-details)
+    - [File structure](#file-structure)
+    - [Installation](#installation)
+    - [Data](#data)
 
 ## Motivation
 
@@ -38,6 +42,8 @@ By building this feature-specific complexity into your model, you prepare it to 
 
 - A **feedforward network** is just a neural network that that feeds the data 'forward', i.e. from input to output, passing through functions smoothly without any loops or cycles.
 - A **convolution** the function resulting from the operation $(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)g(t-\tau)d\tau$ that tells us how the shape of one function is modified by another. In the context of CNNs, convolutions are used to extract features from images by applying filters (kernels) to the input pixels, so we're often working with discrete convolutions instead of continuous integrals. Sometimes, it's also called a **cross-correlation**, **filter**, or **kernel**. We use the math behind convolutions and apply it to images. More on this later.
+- A **convolution block** is a set of layers that perform convolution operations, typically consisting of a convolutional layer followed by an activation function (like ReLU) and sometimes a pooling layer. These blocks are stacked together to form the convolutional part of the network. We often create multiple blocks instead of one big one in order to create numerical stability and add checks-and-bounds at each stage.
+- **Parallel convolutions** are created when the same input goes through multiple (different)convolutional layers. Multiple features are independently extracted from the same input. All steps in the same block usually have the same 'depth' (number of channels/parallel processes).
 
 ## Math
 
@@ -251,6 +257,83 @@ In addition to the core CNN architecture, there are several add-ons and techniqu
 
 These ideas will require further reading in their own right. All of them are useful but, in real life, they don't all need to be used at once. In fact, it's often best to start simple and gradually add complexity until we reach the desired accuracy.
 
+## Project Details
+
+### File structure
+
+```md
+CNN/
+├── imgs/                   # images used in this writeup
+│
+├── utils/                  # (Python) source code for implementations
+│   ├─── display_e.py        # Displays sample EMNIST images
+│   ├─── display_s9.py       # Displays sample Synthwave90k images
+│   ├─── import_e.py         # Imports EMNIST dataset
+│   ├─── import_s9.py        # Imports Synthwave90k dataset
+│   ├─── preprocess_e.py     # Preprocesses EMNIST dataset
+│   └─── preprocess_s9.py    # Preprocesses Synthwave90k dataset
+|
+├── data/                    # image files 
+│   │ EMNIST/                # The EMNIST dataset
+│   ├─── raw/                # Raw downloaded files
+│   ├─── processed/          # Processed files
+│   │ 
+│   │ Synthwave90k/         # The Synthwave90k dataset
+│   ├────── raw/            # Raw downloaded files
+│   └────── processed/      # Processed files
+│
+├── char/                   # Src for (English) character recognition
+|
+└──requirements.txt    # project dependencies
+```
+
+### Installation
+
+- Ensure you have Python installed
+
+1. Clone this repo
+
+    ```bash
+    git clone https://github.com/yourusername/CNN.git
+    cd CNN
+    ```
+
+2. Create a virtual Environment
+
+    ```bash
+    python -m venv venv
+    # OR 
+    # conda create -n CNN
+    # (for Conda)
+    venv\Scripts\activate # or source venv/bin/activate on Unix
+    # OR
+    conda activate CNN
+    ```
+
+3. Download the dependencies
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4. Download the EMNIST dataset
+
+    ```bash
+    python src/import.py
+    ```
+
+### Data
+
+1. [EMNIST dataset](https://www.nist.gov/itl/products-and-services/emnist-dataset) for character recognition.
+
+    Cohen, Gregory, et al. "The EMNIST Dataset." nist.gov , 17 Feb. 2017, [nist.gov](https://www.nist.gov/itl/products-and-services/emnist-dataset). Accessed 14 Nov. 2025.
+
+2. Synthwave90k for word recognition.
+
+   **Jaderberg, Max, et al.** *Reading Text in the Wild with Convolutional Neural Networks.* International Journal of Computer Vision, vol. 116, no. 1, 2016, pp. 1–20. [https://www.robots.ox.ac.uk/~vgg/data/text/](https://www.robots.ox.ac.uk/~vgg/data/text/). Accessed 14 Nov. 2025.
+
 ---
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
 This project is licensed under the MIT License.
