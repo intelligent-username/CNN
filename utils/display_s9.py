@@ -1,9 +1,5 @@
 """
-Display some sample images from the Synthwave90k dataset. This mirrors
-`utils/display_e.py` but uses an image-folder dataset loader.
-
-The script looks in `data/Synthwave90k/{processed,raw,}` and displays a
-grid of sample images using matplotlib.
+Display some sample images from the Synthwave90k dataset. 
 """
 
 import os

@@ -201,7 +201,7 @@ However, for the sake of demonstration, this is what a convolution looks like in
 
 When thinking about CNNs, the key is to think of a feedforward network that has some number of initial layers responsible for feature extraction, followed by some number of Dense layers for learning/regression and a final layer for [classification](https://www.github.com/intelligent-username/Classification).
 
-After understanding these concepts, we can simply implement them in code and start making use of them. However, there are still considerations that we have to make. For example, what activation functions should we use? How many kernels should we have? What should *their* hyperparameters be? And so on and so forth. It would be profitable to spend some time should be spent in the pre-training phase to consider these questions.
+After understanding these concepts, we can simply implement them in code and start making use of them. However, there are still considerations that we have to make. For example, what activation functions should we use? How many kernels should we have? What should *their* hyperparameters be? And so on and so forth. It would be profitable to spend some time in the pre-training phase to consider these questions.
 
 One specific thing to consider is the data pipeline. When working with pictures, we get all sorts of different dimensions, colour schemes, formats, and so forth. We need to take good care to set up a good pre-processing pipeline.
 
@@ -228,7 +228,7 @@ transform = transforms.Compose([
 
 This ensures that every image fed into the network is correctly formatted, normalized, and converted to a tensor for training.
 
-There are other general ML pratices to consider as well, such as the details of the [regularization](https://www.github.com/intelligent-username/Regularization) or the [optimization](https://www.github.com/intelligent-username/Gradient-Descent).
+There are other general ML practices to consider as well, such as the details of the [regularization](https://www.github.com/intelligent-username/Regularization) or the [optimization](https://www.github.com/intelligent-username/Gradient-Descent).
 
 Some specific CNN configurations have had notable success, such as AlexNet, VGG, ResNet, and so on.
 
@@ -319,18 +319,19 @@ CNN/
 4. Download the EMNIST dataset
 
     ```bash
-    python src/import.py
+    python src/import_e.py
+    python src/import_s9.py
     ```
 
 ### Data
 
 1. [EMNIST dataset](https://www.nist.gov/itl/products-and-services/emnist-dataset) for character recognition.
 
-    Cohen, Gregory, et al. "The EMNIST Dataset." nist.gov , 17 Feb. 2017, [nist.gov](https://www.nist.gov/itl/products-and-services/emnist-dataset). Accessed 14 Nov. 2025.
+    Cohen, G., Afshar, S., Tapson, J., & van Schaik, A. (2017). EMNIST: an extension of MNIST to handwritten letters. Retrieved from [http://arxiv.org/abs/1702.05373](http://arxiv.org/abs/1702.05373)
 
 2. Synthwave90k for word recognition.
 
-   **Jaderberg, Max, et al.** *Reading Text in the Wild with Convolutional Neural Networks.* International Journal of Computer Vision, vol. 116, no. 1, 2016, pp. 1–20. [https://www.robots.ox.ac.uk/~vgg/data/text/](https://www.robots.ox.ac.uk/~vgg/data/text/). Accessed 14 Nov. 2025.
+   **Jaderberg, Max & Simonyan, Karen, et al** *Reading Text in the Wild with Convolutional Neural Networks.* International Journal of Computer Vision, vol. 116, no. 1, 2016, pp. 1–20. [https://www.robots.ox.ac.uk/~vgg/data/text/](https://www.robots.ox.ac.uk/~vgg/data/text/). Accessed 14 Nov. 2025.
 
 ---
 
