@@ -177,7 +177,6 @@ Take the following $630 \times 630$px image:
 Let's apply a grayscale filter and then trace it's vertical lines using the following kernel:
 
 $$
-% Matrix
 \begin{bmatrix}
 -1 & 0 & 1 \\
 -1 & 0 & 1 \\
