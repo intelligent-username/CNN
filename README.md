@@ -169,7 +169,7 @@ Let's take these ideas and see how we can use a convolution to transform an imag
 
 Take the following $630 \times 630$px image:
 
-![Original Image](imgs/tree.png)
+![Original Image](imgs/Tree.png)
 
 <!-- Original image source: openclipart -->
 <!-- https://openclipart.org/detail/310230/rudolph-christmas-tree-construction-paper -->

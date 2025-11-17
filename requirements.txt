@@ -2,6 +2,7 @@ torch
 torchvision
 pandas
 numpy
+Pillow
 
 # Not necessary unless you want to run display.py
 idx2numpy
