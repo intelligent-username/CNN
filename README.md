@@ -237,7 +237,11 @@ One of the first successful CNN architectures was AlexNet, which won the ImageNe
 
 ### VGG
 
-VGG (Visual Geometry Group) networks, developed by the University of Oxford, are known for their simplicity and depth. VGG16 and VGG19 are popular variants with 16 and 19 layers, respectively. They use small $3 \times 3$ convolutional filters throughout the network, which allows for deeper architectures while keeping the number of parameters manageable.
+VGG (Visual Geometry Group) networks, developed by the University of Oxford, are known for their simplicity and depth. VGG16 and VGG19 are popular variants with 16 and 19 layers, respectively. They use small $3 \times 3$ convolutional filters throughout the network, which allows for deeper architectures while keeping the number of parameters manageable. Usually, they consist of:
+
+- Several consecutive 3×3 convolution + ReLU layers, that keep the same number of channels.
+- A single max-pool (2×2) at the end of the block, halving the spatial resolution.
+- The next block doubling the channel count (e.g., 32 to 64).
 
 ### ResNet
 
@@ -247,16 +251,18 @@ ResNet (Residual Network) introduced the concept of residual connections, which 
 
 In addition to the core CNN architecture, there are several add-ons and techniques that can enhance performance:
 
+- **Loss Function**: we often use Cross-Entropy Loss, but there are other options for a CNN, like Hinge Loss or something else.
 - **Batch Normalization**: This technique normalizes the inputs of each layer to have a mean of zero and a variance of one. It helps stabilize and accelerate training by reducing internal covariate shift.
-- **Dropout**: Dropout is a regularization technique that randomly sets a fraction of the input units to zero during training. This helps prevent overfitting by forcing the network to learn more robust features.
+- **Regularization**: this is how we prevent overfitting. Often, we turn to dropout. Dropout is the technique of randomly setting a fraction of the input units to zero during training. This helps prevent overfitting by forcing the network to learn more robust features.
 - **Data Augmentation**: This involves generating additional training data by applying random transformations (e.g., rotations, flips, scaling) to the existing dataset. Data augmentation helps improve the model's generalization by exposing it to a wider variety of examples.
-- **Transfer Learning**: This technique involves using a pre-trained CNN model (trained on a large dataset like ImageNet) as a starting point for a new task. By fine-tuning the pre-trained model on a smaller dataset, we can leverage the learned features and reduce training time.
-- **Recurrence**: In some cases, combining CNNs with Recurrent Neural Networks (RNNs) can be beneficial, especially for tasks involving sequential data or temporal dependencies, such as video analysis.
+- **Transfer Learning**: This technique involves using a pre-trained CNN model (trained on a large dataset like ImageNet) as a starting point for a new task. By fine-tuning the pre-trained model on a smaller dataset, we can leverage the learned features and reduce training time. We won't be doing this, but it can be done with our models, once they are made.
 - **Attention Mechanisms**: Attention mechanisms can be integrated into CNNs to allow the model to focus on specific parts of the input image that are more relevant for the task at hand. This can improve performance, especially in tasks like image captioning or object detection.
 
-These ideas will require further reading in their own right. All of them are useful but, in real life, they don't all need to be used at once. In fact, it's often best to start simple and gradually add complexity until we reach the desired accuracy.
+These ideas will require further reading in their own right. All of them are useful. But, in real life, they don't all need to be used at once. Getting the basics as right as possible is the highest-ROI step.
 
 ## Project Details
+
+\*In progress
 
 ### File structure
 
