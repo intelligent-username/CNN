@@ -1,5 +1,5 @@
 """
-Import (downoad) and unzip the standard EMNIST dataset from torchvision's datasets
+Import (download) and unzip the full EMNIST dataset from torchvision's datasets
 Then print basic info.
 """
 
@@ -8,27 +8,23 @@ import torch
 from torchvision import datasets, transforms
 import pandas as pd
 
-
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 folder = os.path.join(project_root, "data")
 
-# --- Load EMNIST (Letters split) ---
+# --- Load EMNIST (all classes: digits + letters) ---
 transform = transforms.ToTensor()
 emnist = datasets.EMNIST(
     root=folder,
-    split="letters",
+    split="byclass",      # all 62 classes
     train=True,
     download=True,
     transform=transform
 )
 
-# ATP, data is downloaded and unzipped
-
-
 # === Read out some basic info ===
 num_samples = len(emnist)
 sample_shape = emnist[0][0].shape
-classes = emnist.classes            # labels 1–26 mapped to letters
+classes = emnist.classes  # labels 0–61 mapped to digits and letters
 
 info = {
     "num_samples": [num_samples],
