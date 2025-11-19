@@ -1,61 +1,71 @@
 """
-Actually train the CNN
+Actually train the CNN (Updated for PyTorch 2.x+)
 """
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-from loader import train_loader, val_loader, val_data
 from model import EMNIST_VGG
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def main():
+    from loader import build_loaders
 
-model = EMNIST_VGG(num_classes=62).to(device)
+    # Ensure loader uses batch_size=1024 or 2048
+    train_loader, val_loader, val_data = build_loaders()
 
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)  # Adam is best?
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
+    if device.type == "cuda":
+        print("CUDA device:", torch.cuda.get_device_name(0))
 
-num_epochs = 200
+    model = EMNIST_VGG(num_classes=62).to(device)
 
-# Gradient Descent :)
-for epoch in range(num_epochs):
-    model.train()
-    
-    running_loss = 0
-    for images, labels in train_loader:
-        images, labels = images.to(device), labels.to(device)
-        
-        optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        
-        running_loss += loss.item() * images.size(0) 
-    
-    avg_train_loss = running_loss / len(train_loader.dataset)  # weighted average
-    
-    # --- Validation ---
-    model.eval()  # evaluation mode
-    val_loss = 0
-    correct = 0
-    with torch.no_grad():
-        for val_images, val_labels in val_loader:
-            val_images, val_labels = val_images.to(device), val_labels.to(device)
-            val_outputs = model(val_images)
-            val_loss += criterion(val_outputs, val_labels).item() * val_images.size(0)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    scaler = torch.amp.GradScaler('cuda')
+
+    num_epochs = 50
+
+    print("Starting training...")
+
+    try:
+        # Gradient Descent :)
+        for epoch in range(num_epochs):
+            model.train()
+            running_loss = 0
             
-            predicted = val_outputs.argmax(dim=1)
-            correct += (predicted == val_labels).sum().item()
-    
-    avg_val_loss = val_loss / len(val_loader.dataset)
-    val_accuracy = correct / len(val_loader.dataset)
-    
-    print(f"Epoch {epoch+1}/{num_epochs}, "
-          f"Train Loss: {avg_train_loss:.4f}, "
-          f"Val Loss: {avg_val_loss:.4f}, "
-          f"Val Accuracy: {val_accuracy:.4f}")
+            for images, labels in train_loader:
+                images, labels = images.to(device), labels.to(device)
 
-# Save full model
-torch.save(model, "emnist_cnn_full.pth")
-print("Training complete. Models saved.")
+                optimizer.zero_grad()
+
+                with torch.amp.autocast('cuda'):
+                    outputs = model(images)
+                    loss = criterion(outputs, labels)
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+
+                running_loss += loss.item() * images.size(0)
+
+            avg_train_loss = running_loss / len(train_loader.dataset)
+
+            print(
+                f"Epoch {epoch + 1}/{num_epochs}, "
+                f"Train Loss: {avg_train_loss:.4f}"
+            )
+    except KeyboardInterrupt:
+        print("\nTraining interrupted by user!")
+        print("Saving current progress...")
+        print("DO NOT ctrl + C")
+    except Exception:
+        print("Training crashed for reason")
+        print("Saving current progress...")
+        print("DO NOT ctrl + C")
+
+    torch.save(model, "emnist_cnn_full.pth")
+    print("Training complete. Model saved.")
+
+if __name__ == "__main__":
+    main()
