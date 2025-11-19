@@ -1,4 +1,4 @@
-# English Character Recognizing CNN
+# English Character Recognition CNN
 
 In this part of the project, we use the EMNIST dataset to train a CNN that'll recognize letters and numbers. In the next project, we'll make one that recognizes entire words. Then, we'll compare the upsides and downsides of each.
 
@@ -42,3 +42,7 @@ We'll be using two VGG blocks. Both will consist of layers that have stride and 
 ### Dense Layers
 
 Once the convolutions are done, we pass the data through a Flatten layer to convert the 2D matrices into a 1D vector. Then, we pass to the Dense layers.
+
+## Results
+
+I could've stopped the training at epoch 24, where the loss was just under 0.35. Note that this is actually decently accurate ($accuracy \neq 1 - \text{loss}$). Because of the loss function we're using, the model is punished/rewarded based on the confidence of its predictions, not just whether it's right or wrong. Also, after this point, we've hit the "elbow" of the loss curve, i.e. where the loss starts to plateau. This is because, in this dataset, there are many characters that are very difficult for even humans to tease apart, such as an uppercase `O` and the number `0`. Thus, in these cases, the model will never have high confidence, and so will always incur some loss.

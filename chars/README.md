@@ -8,6 +8,14 @@ One issue with the former approach is the segmentation: there are countless diff
 
 Recent advances, like [DeepSeek-OCR](https://deepseek.ai/blog/deepseek-ocr-context-compression)'s convolutional token aggregation, extend this by bundling words into compact visual representations for multimodal decoding, enabling 200K+ pages/day processing on single GPUs without explicit segmentation.
 
+## Dataset
+
+The Dataset being used here is Synthwave90k, which consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. The dataset is about 12 GB in size. It's composed of folders that each usually contain only 1 image. Because there's so much data, we can give the model tons of examples to learn from, which should help it generalize better to new images.
+
+The data is downloaded from HuggingFace, stored in shards of Arrow files in the data/Synth90k directory. Upon running `import_s9.py`, you should see them start to show up. Note that the download process may take a while.
+
+Each sample has an image and its corresponding text label. The images vary in size, so we'll need to preprocess them (like resizing and normalizing) before feeding them into the CNN for training. When training, PyTorch can only work with PIL/NumPy images, so we'll convert the images from their original format to that during preprocessing. This shouldn't be too hard with the HuggingFace datasets library.
+
 ## Architecture
 
 The architecture follows the dictionary-based (DICT) CNN from [Jaderberg et al.](https://arxiv.org/abs/1406.2227) (2014):
@@ -18,11 +26,3 @@ The architecture follows the dictionary-based (DICT) CNN from [Jaderberg et al.]
 - a final 90k-neuron softmax for direct word classification
 
 This end-to-end design will process whole-word images without character segmentation, using multinomial logistic loss to minimize compounding errors from variable fonts and spacings.
-
-## Dataset
-
-The Dataset being used here is Synthwave90k, which consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. The dataset is about 12 GB in size. It's composed of folders that each usually contain only 1 image. Because there's so much data, we can give the model tons of examples to learn from, which should help it generalize better to new images.
-
-The data is downloaded from HuggingFace, stored in shards of Arrow files in the data/Synth90k directory. Upon running `import_s9.py`, you should see them start to show up. Note that the download process may take a while.
-
-Each sample has an image and its corresponding text label. The images vary in size, so we'll need to preprocess them (like resizing and normalizing) before feeding them into the CNN for training. When training, PyTorch can only work with PIL/NumPy images, so we'll convert the images from their original format to that during preprocessing. This shouldn't be too hard with the HuggingFace datasets library.
