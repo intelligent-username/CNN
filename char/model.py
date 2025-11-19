@@ -1,5 +1,5 @@
 """
-The VGG-style model that will be trained
+This is the VGG-style model that will be trained
 """
 
 # Note that an input layer isn't needed since the first convolutional layer will work with the images directly
