@@ -2,7 +2,7 @@
 This is the VGG-style model that will be trained
 """
 
-# Note that an input layer isn't needed since the first convolutional layer will work with the images directly
+# Note: input layers aren't needed since the first convolutional layer will work with the images directly
 
 import torch
 import torch.nn as nn
@@ -38,9 +38,11 @@ class EMNIST_VGG(nn.Module):
         # Flatten layer (no parameters needed, only reshaping)
         self.flatten = nn.Flatten()
 
+        # (Since the Dense layers just take flat inputs)
+
         # Two Dense layers
         self.fc1 = nn.Linear(64 * 7 * 7, 256)   # 28x28 -> 14x14 -> 7x7
-        self.dropout = nn.Dropout(p=0.5)        # Because regularization is important
+        self.dropout = nn.Dropout(p=0.5)        # Because regularization is important :)
         self.fc2 = nn.Linear(256, num_classes)
 
     def forward(self, x):

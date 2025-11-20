@@ -1,5 +1,5 @@
 """
-Bare bones template for Synthwave90k for defining the CNN architecture
+Model Architecture (for Word Recognition)
 """
 
 import torch.nn as nn

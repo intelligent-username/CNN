@@ -57,10 +57,14 @@ def main():
             )
     except KeyboardInterrupt:
         print("\nTraining interrupted by user!")
+        print(torch.traceback.format_exc())
+        print(KeyboardInterrupt)
         print("Saving current progress...")
         print("DO NOT ctrl + C")
     except Exception:
-        print("Training crashed for reason")
+        print("Training crashed for some reason")
+        print(torch.traceback.format_exc())
+        print(Exception)
         print("Saving current progress...")
         print("DO NOT ctrl + C")
 

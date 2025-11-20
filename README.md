@@ -269,27 +269,29 @@ These ideas will require further reading in their own right. All of them are use
 
 ```md
 CNN/
+├── char/                   # Src for single character recognition
+│
+├── chars/                  # Src for word recognition
+|
+├── data/               # populated after running the import scripts 
+│   ├─── EMNIST/                # The EMNIST dataset
+│   └─── Synthwave90k/          # The Synthwave90k dataset
+│
 ├── imgs/                   # images used in this writeup
-│
+|
+├── models/                   # pre-trained models resulting from this project
+|
 ├── utils/                  # (Python) source code for implementations
-│   ├─── display_e.py        # Displays sample EMNIST images
-│   ├─── display_s9.py       # Displays sample Synthwave90k images
-│   ├─── import_e.py         # Imports EMNIST dataset
-│   ├─── import_s9.py        # Imports Synthwave90k dataset
-│   ├─── preprocess_e.py     # Preprocesses EMNIST dataset
-│   └─── preprocess_s9.py    # Preprocesses Synthwave90k dataset
-|
-├── data/                    # image files 
-│   │ EMNIST/                # The EMNIST dataset
-│   ├─── raw/                # Raw downloaded files
-│   ├─── processed/          # Processed files
-│   │ 
-│   │ Synthwave90k/         # The Synthwave90k dataset
-│   ├────── raw/            # Raw downloaded files
-│   └────── processed/      # Processed files
+│   ├─── display_e.py        # Sample EMNIST images
+│   ├─── display_s9.py       # Sample Synthwave90k images
+|   |                          ^^ not crucial, make README images
+│   ├─── import_e.py         # Download EMNIST
+│   └─── import_s9.py        # Download Synthwave90k
 │
-├── char/                   # Src for (English) character recognition
-|
+
+├── .gitignore              # files to ignore in git
+├── README.md               # this file
+├── LICENSE                 # MIT License declaration
 └──requirements.txt    # project dependencies
 ```
 

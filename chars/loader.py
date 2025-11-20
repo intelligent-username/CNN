@@ -1,5 +1,5 @@
 """
-Bare bones template for Synthwave90k for loading the dataset into PyTorch DataLoaders
+Load Synthwave90k into PyTorch DataLoaders
 """
 
 import os

@@ -23,8 +23,10 @@ def build_loaders(batch_size=2048, num_workers=4, val_fraction=0.1):
         transform=transform
     )
 
-    print("done processing.")
+    print("Done processing.")
 
+
+    print("Here are some basic details.")
     dataset_size = len(emnist)
 
     train_size = int((1.0 - val_fraction) * dataset_size)

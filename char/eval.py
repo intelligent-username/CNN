@@ -1,5 +1,6 @@
 """
-Evaluate the CNN's accuracy
+Evaluate the CNN's accuracy.
+Finish later.
 """
 
 import torch
@@ -35,6 +36,3 @@ accuracy = correct / total_samples
 
 print(f"Validation Loss: {avg_loss:.4f}")
 print(f"Validation Accuracy: {accuracy:.4f}")
-
-# Optional: compute per-class accuracy or confusion matrix
-# Useful for spotting which letters or digits are most often misclassified

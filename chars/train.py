@@ -1,5 +1,5 @@
 """
-Bare bones template for Synthwave90k for training the CNN model
+Word recognition training script
 """
 
 import torch

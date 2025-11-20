@@ -1,5 +1,5 @@
 """
-Bare bones template for Synthwave90k for evaluating the trained model
+Evaluates trained CNN's accuracy
 """
 
 import torch

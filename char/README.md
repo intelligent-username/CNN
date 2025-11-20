@@ -6,6 +6,8 @@ This README contains some notes on the mini-project, it will expand over time if
 
 ## Dataset
 
+![EMNIST sample](../imgs/EMNIST.png)
+
 The dataset being used here is EMNIST, which is an extension of the classic MNIST dataset. EMNIST includes handwritten letters as well as digits. There are 26 balanced classes of uppercase and lowercase letters (a total of 52 classes) in addition to the 10 digit classes from MNIST. In total, we have 814,255 training samples and 135,000 test samples, each represented as a 28×28 grayscale image. This data is to be pre-processed and then trained on to train the CNN.
 
 ## Architecture
