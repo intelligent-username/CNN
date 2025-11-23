@@ -263,7 +263,7 @@ These ideas will require further reading in their own right. All of them are use
 
 ## Project Details
 
-\*In progress
+\*Currently in progress
 
 ### File structure
 
