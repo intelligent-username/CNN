@@ -10,7 +10,10 @@ Recent advances, like [DeepSeek-OCR](https://deepseek.ai/blog/deepseek-ocr-conte
 
 ## Dataset
 
-The Dataset being used here is Synthwave90k, which consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. The dataset is about 12 GB in size. It's composed of folders that each usually contain only 1 image. Because there's so much data, we can give the model tons of examples to learn from, which should help it generalize better to new images.
+The Dataset being used here is Synthwave90k, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition]((https://arxiv.org/abs/1406.2227)) paper by Jaderberg et al. (2014).
+It consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. For future implementations, one can take inspiration from this paper to, for example, create a more efficient version of the same dataset, make the data more complex, or even create the same kind of dataset for a different language.
+
+In total, we have a vocabulary of about 90,000. The dataset is about 12 GB in size. Because there's so much data, we can give the model tons of examples to learn from, which should help it generalize better to new words.
 
 The data is downloaded from HuggingFace, stored in shards of Arrow files in the data/Synth90k directory. Upon running `import_s9.py`, you should see them start to show up. Note that the download process may take a while.
 
@@ -18,11 +21,15 @@ Each sample has an image and its corresponding text label. The images vary in si
 
 ## Architecture
 
-The architecture follows the dictionary-based (DICT) CNN from [Jaderberg et al.](https://arxiv.org/abs/1406.2227) (2014):
+The CNN architecture itself is the focus of *this* project, and we follow the next paper by Jaderberg et al, [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition
+](https://arxiv.org/abs/1507.05717) (2014). It three introduces different architectures: DICT, CHAR, and NGRAM. DICT is the main focus, and so it'll be the one that I'm implementing here. The DICT architecutre consists of:
 
-- grayscale images resized to 32×100 pixels feed into four conv layers (64 5×5, 128 5×5, 256 3×3, 512 3×3 filters; stride 1, padded)
-- 2×2 max pooling after the first three
-- followed by a 4096-unit ReLU fully connected layer
-- a final 90k-neuron softmax for direct word classification
+- 4 Convolutional Layers
+  - Conv1: 64 filters, 5×5, stride 1, pad; ReLU → LRN → MaxPool(2×2)
+  - Conv2: 128 filters, 5×5; ReLU → LRN → MaxPool(2×2)
+  - Conv3: 256 filters, 3×3; ReLU
+  - Conv4: 512 filters, 3×3; ReLU → MaxPool(2×2)
+- 2 Fully Connected Layers, both with ReLU activations and Dropout
+- Softmax for Classifcation
 
-This end-to-end design will process whole-word images without character segmentation, using multinomial logistic loss to minimize compounding errors from variable fonts and spacings.
+Notice that this is already a *massive* neural network to train. On most laptops, it'll take hundreds of hours. You may even want to rent a cloud GPU to speed this up.
