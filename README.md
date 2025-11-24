@@ -273,26 +273,26 @@ CNN/
 │
 ├── chars/                  # Src for word recognition
 |
-├── data/               # populated after running the import scripts 
+├── data/                   # populated after running imports 
 │   ├─── EMNIST/                # The EMNIST dataset
 │   └─── Synthwave90k/          # The Synthwave90k dataset
 │
 ├── imgs/                   # images used in this writeup
 |
-├── models/                   # pre-trained models resulting from this project
+├── models/                 # models from running this project
 |
 ├── utils/                  # (Python) source code for implementations
-│   ├─── display_e.py        # Sample EMNIST images
-│   ├─── display_s9.py       # Sample Synthwave90k images
-|   |                          ^^ not crucial, make README images
+│   ├─── display_e.py           # Sample EMNIST images
+│   ├─── display_s9.py          # Sample Synthwave90k images
+│   │                           ^^ (not crucial)
 │   ├─── import_e.py         # Download EMNIST
 │   └─── import_s9.py        # Download Synthwave90k
 │
-
+|
 ├── .gitignore              # files to ignore in git
 ├── README.md               # this file
 ├── LICENSE                 # MIT License declaration
-└──requirements.txt    # project dependencies
+└──requirements.txt         # Pythonn dependencies
 ```
 
 ### Installation

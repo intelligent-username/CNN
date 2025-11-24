@@ -1,6 +1,5 @@
 """
 Evaluate the CNN's accuracy.
-Finish later.
 """
 
 import torch
