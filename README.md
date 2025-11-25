@@ -275,7 +275,7 @@ CNN/
 |
 ├── data/                   # populated after running imports 
 │   ├─── EMNIST/                # The EMNIST dataset
-│   └─── Synthwave90k/          # The Synthwave90k dataset
+│   └─── Synth90k/          # The Synth90k dataset
 │
 ├── imgs/                   # images used in this writeup
 |
@@ -283,10 +283,10 @@ CNN/
 |
 ├── utils/                  # (Python) source code for implementations
 │   ├─── display_e.py           # Sample EMNIST images
-│   ├─── display_s9.py          # Sample Synthwave90k images
+│   ├─── display_s9.py          # Sample Synth90k images
 │   │                           ^^ (not crucial)
 │   ├─── import_e.py         # Download EMNIST
-│   └─── import_s9.py        # Download Synthwave90k
+│   └─── import_s9.py        # Download Synth90k
 │
 |
 ├── .gitignore              # files to ignore in git
