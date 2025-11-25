@@ -14,13 +14,13 @@ class ConvBlock(nn.Module):
     def forward(self, x):
         pass
 
-class Synthwave90k_CNN(nn.Module):
+class Synth90k90k_CNN(nn.Module):
     """
-    CNN architecture for Synthwave90k text recognition.
+    CNN architecture for Synth90k text recognition.
     """
     
     def __init__(self, num_classes=None):
-        super(Synthwave90k_CNN, self).__init__()
+        super(Synth90k90k_CNN, self).__init__()
         pass
 
     def forward(self, x):

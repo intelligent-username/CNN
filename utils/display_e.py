@@ -1,6 +1,6 @@
 """
-Display some of the EMNIST pictures to get an idea of what it's like
-Not necessary for the project, just for visualization
+Display some of the EMNIST pictures to get an idea of what it looks like
+Not necessary for the project, just for visualization. Produced image is used in README.
 """
 
 import idx2numpy

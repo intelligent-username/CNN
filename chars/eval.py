@@ -6,7 +6,7 @@ import torch
 
 def main():
     """
-    Evaluate the trained Synthwave90k model on test data.
+    Evaluate the trained Synth90k model on test data.
     """
     pass
 

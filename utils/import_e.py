@@ -8,6 +8,8 @@ import torch
 from torchvision import datasets, transforms
 import pandas as pd
 
+print("Importing EMNIST dataset...")
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 folder = os.path.join(project_root, "data")
 
@@ -35,3 +37,6 @@ info = {
 
 df = pd.DataFrame(info)
 print(df)
+
+print("----------------------")
+print("Done")

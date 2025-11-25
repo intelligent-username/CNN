@@ -286,7 +286,6 @@ CNN/
 │   ├─── display_s9.py          # Sample Synth90k images
 │   │                           ^^ (not crucial)
 │   ├─── import_e.py         # Download EMNIST
-│   └─── import_s9.py        # Download Synth90k
 │
 |
 ├── .gitignore              # files to ignore in git
@@ -324,12 +323,22 @@ CNN/
     pip install -r requirements.txt
     ```
 
-4. Download the EMNIST dataset
+4. Download the dataset(s) you want
+
+    For EMNIST:
 
     ```bash
     python src/import_e.py
-    python src/import_s9.py
     ```
+
+    For SynthText:
+
+    ```bash
+    python src/import_st.py
+    ```
+
+    Note that this script downloads from the HuggingFace loader, which automatically compresses
+
 
 ### Data
 
@@ -337,9 +346,21 @@ CNN/
 
     Cohen, G., Afshar, S., Tapson, J., & van Schaik, A. (2017). EMNIST: an extension of MNIST to handwritten letters. Retrieved from [http://arxiv.org/abs/1702.05373](http://arxiv.org/abs/1702.05373)
 
-2. Synthwave90k for word recognition.
+2. Synth90k for word recognition.
 
    **Jaderberg, Max & Simonyan, Karen, et al** *Reading Text in the Wild with Convolutional Neural Networks.* International Journal of Computer Vision, vol. 116, no. 1, 2016, pp. 1–20. [https://www.robots.ox.ac.uk/~vgg/data/text/](https://www.robots.ox.ac.uk/~vgg/data/text/). Accessed 14 Nov. 2025.
+
+   \*Note: this dataset isn't actually used. It's only referenced in `chars/README.md` for context.
+
+3. SynthText for End-to-End Text Recognition
+
+    Gupta, Ankush, Andrea Vedaldi, and Andrew Zisserman.  
+    "**Synthetic Data for Text Localisation in Natural Images**."  
+    *IEEE Conference on Computer Vision and Pattern Recognition*, 2016.  
+    https://arxiv.org/abs/1604.06646. Accessed 24 Nov. 2025.
+
+
+
 
 ---
 

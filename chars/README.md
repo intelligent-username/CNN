@@ -8,16 +8,21 @@ One issue with the former approach is the segmentation: there are countless diff
 
 Recent advances, like [DeepSeek-OCR](https://deepseek.ai/blog/deepseek-ocr-context-compression)'s convolutional token aggregation, extend this by bundling words into compact visual representations for multimodal decoding, enabling 200K+ pages/day processing on single GPUs without explicit segmentation.
 
-## Dataset
+## Datasets
 
-The Dataset being used here is Synthwave90k, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition]((https://arxiv.org/abs/1406.2227)) paper by Jaderberg et al. (2014).
+One famous dataset **Synth90k**, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition]((https://arxiv.org/abs/1406.2227)) paper by Jaderberg et al. (2014).
+
 It consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. For future implementations, one can take inspiration from this paper to, for example, create a more efficient version of the same dataset, make the data more complex, or even create the same kind of dataset for a different language.
 
-In total, we have a vocabulary of about 90,000. The dataset is about 12 GB in size. Because there's so much data, we can give the model tons of examples to learn from, which should help it generalize better to new words.
-
-The data is downloaded from HuggingFace, stored in shards of Arrow files in the data/Synth90k directory. Upon running `import_s9.py`, you should see them start to show up. Note that the download process may take a while.
+In total, we have a vocabulary of about 90,000. The dataset is about 12 GB in size, containing 9 million pictures of individual words or numbers. Because there's so much data, we can give the model tons of examples to learn from, which should help it generalize better to new words.
 
 Each sample has an image and its corresponding text label. The images vary in size, so we'll need to preprocess them (like resizing and normalizing) before feeding them into the CNN for training. When training, PyTorch can only work with PIL/NumPy images, so we'll convert the images from their original format to that during preprocessing. This shouldn't be too hard with the HuggingFace datasets library.
+
+However, a better database would be SynthText, from the paper [Synthetic Data for Text Localisation in Natural Images](https://arxiv.org/abs/1604.06646) by Gupta et al. (2016). This dataset is more complex and realistic, as it places text in natural scenes, like street signs, billboards, and shop names. It contains about 900,000 images, with roughly 9 words on average per image. This dataset is better since it actually places the text in real-world images, so the learning that the CNN will do is more useful for practical applications.
+
+When downloading from HuggingFace using the `../utils/import_st.py` script, the dataset will end up being roughly 33 GB in size. There are 85 `.tar` files, with an average size of ~560 MB. You can download it "manually" as well, such as from Kaggle [Kaggle](https://www.kaggle.com/datasets/wassefy/synthtext).
+
+Then, the data needs to be preprocessed as well, since the text is embedded in larger images. `loader.py` script handles this.
 
 ## Architecture
 
@@ -38,8 +43,12 @@ However, notice that this architecture is absolutely *massive*. Even if you had 
 
 Not the mention, this architecture has some limitations as well. It's practically acting as a 90-thousand-word classifier, so it can't recognize words outside of its training vocabulary. For example, if one of our dictionaries misses a new slang term, has a typo, or simply misses rare words, the model will choke.
 
-Instead, I will opt for using a different architecture: A CRNN (Convolutional Recurrent Neural Network) with CTC (Connectionist Temporal Classification) loss. This architecture combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions.
+Instead, I will opt for using a different architecture: A **CRNN** (Convolutional Recurrent Neural Network) with **CTC** (Connectionist Temporal Classification) loss. This architecture combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions.
 
-Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. In this project, the CRNN we'll be implementing will have the following architecture:
+Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. The basic idea is that it looks at the inputted image for words, and iterates "forwards" through the image, hence the recurrence. This way, it can recognize sequences of characters without needing to classify each word individually.
+
+In this project, the CRNN we'll be implementing will have the following architecture:
 
 - 
+
+This model is defined in `model.py`. The training loop is in `train.py`, and the data loading is in `chars/loader.py`. Follow along!
