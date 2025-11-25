@@ -1,22 +1,29 @@
 """
 Display sample images from SynthText.
-Samples 1 image every 5,000 images, up to 100 images.
-Handles corrupt files and dynamically sizes the output grid.
+Samples 1 image every 1,200 images, up to 100 images.
+Tried to keep decently high DPI :)
 """
+
+# Note: don't switch to matplotlib since it's purely on the CPU and will be slow.
 
 import os
 import math
 import numpy as np
-import matplotlib.pyplot as plt
-from torchvision import transforms
+import torch
+from torchvision.transforms import functional as F
+from torchvision.utils import make_grid, save_image
 from datasets import Dataset as HFDataset 
 from PIL import Image
 import io
 import sys
 
-SAMPLE_RATE = 1000
+SAMPLE_RATE = 1200
 MAX_IMAGES = 100    
-IMAGE_SIZE = 128    
+IMAGE_SIZE = 512    
+
+# Device for acceleration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Running on: {device}")
 
 try:
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -50,11 +57,7 @@ images = []
 collected_count = 0
 global_scan_index = 0
 
-transform = transforms.Compose([
-    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-    transforms.ToTensor(), 
-])
-
+# Determine the correct column key for images
 image_key = None
 for f in arrow_files:
     try:
@@ -79,7 +82,7 @@ for arrow in arrow_files:
     try:
         ds = HFDataset.from_file(arrow)
         count_in_file = len(ds)
-        print(f"Processing file: {filename} ({count_in_file} rows)")
+        # print(f"Processing file: {filename} ({count_in_file} rows)")
         
     except Exception as e:
         print(f"Skipping 'final' file for ease of use: {filename}. Error: {e}")
@@ -99,15 +102,26 @@ for arrow in arrow_files:
                 if hasattr(img_data, 'mode') and img_data.mode != 'RGB':
                     img_data = img_data.convert('RGB')
                 
-                img_tensor = transform(img_data)
+                # Accelerate this onto GPU otherwise it'll take forever
+                # 1. Convert to Tensor
+                img_tensor = F.to_tensor(img_data)
+                
+                # 2. Move to GPU
+                img_tensor = img_tensor.to(device)
+                
+                # 3. Resize on GPU
+                img_tensor = F.resize(img_tensor, [IMAGE_SIZE, IMAGE_SIZE], antialias=True)
+                
                 images.append(img_tensor)
                 collected_count += 1
                 
-                print(f"Collected image {collected_count}/{MAX_IMAGES} (File: {filename}, Index: {i}, Global: {global_scan_index})")
+                # Reduced logging: Only print every 20 images
+                if collected_count % 20 == 0 or collected_count == MAX_IMAGES:
+                    print(f"Collected image {collected_count}/{MAX_IMAGES} (File: {filename}, Index: {i})")
                 
                 if collected_count >= MAX_IMAGES:
                     break
-            except:
+            except Exception as e:
                 pass
         
         global_scan_index += 1
@@ -121,31 +135,19 @@ if collected_count == 0:
     print("Error: No images collected.")
     sys.exit(1)
 
-side = int(np.ceil(np.sqrt(collected_count)))
-grid_h, grid_w = side * IMAGE_SIZE, side * IMAGE_SIZE
-grid = np.zeros((grid_h, grid_w, 3), dtype=np.float32)
+print("Building grid on GPU...")
 
-# Find images and place in grid
-for idx, img_tensor in enumerate(images):
-    row = idx // side
-    col = idx % side
-    
-    img = img_tensor.numpy().transpose(1, 2, 0)
-    
-    y_start, y_end = row * IMAGE_SIZE, (row + 1) * IMAGE_SIZE
-    x_start, x_end = col * IMAGE_SIZE, (col + 1) * IMAGE_SIZE
-    
-    if y_end <= grid_h and x_end <= grid_w:
-        grid[y_start:y_end, x_start:x_end, :] = img
+batch_tensor = torch.stack(images)
+side = int(math.ceil(math.sqrt(collected_count)))
 
-# --- Display and Save ---
-plt.figure(figsize=(40, 40))
-plt.imshow(grid)
-plt.axis("off")
+
+# Don't want whitespace
+# padding=0, etc.
+grid_tensor = make_grid(batch_tensor, nrow=side, padding=0)
+
 out_file = os.path.join(save_path, "SynthText.png")
+print("Saving image...")
 
-print("Saving image to imgs/")
+save_image(grid_tensor, out_file)
 
-plt.savefig(out_file, dpi=300)
-plt.show()
-print(f"Grid saved to {out_file}")
+print(f"Grid saved to {out_file} :)")
