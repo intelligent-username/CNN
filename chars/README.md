@@ -10,6 +10,8 @@ Recent advances, like [DeepSeek-OCR](https://deepseek.ai/blog/deepseek-ocr-conte
 
 ## Datasets
 
+![Sample of SynthText](../imgs/SynthText.png)
+
 One famous dataset **Synth90k**, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition]((https://arxiv.org/abs/1406.2227)) paper by Jaderberg et al. (2014).
 
 It consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. For future implementations, one can take inspiration from this paper to, for example, create a more efficient version of the same dataset, make the data more complex, or even create the same kind of dataset for a different language.

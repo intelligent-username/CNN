@@ -14,7 +14,7 @@ from PIL import Image
 import io
 import sys
 
-SAMPLE_RATE = 1250  
+SAMPLE_RATE = 1000
 MAX_IMAGES = 100    
 IMAGE_SIZE = 128    
 
@@ -28,7 +28,6 @@ synthtext_raw = os.path.join(data_root, "SynthText", "raw")
 save_path = os.path.join(project_root, "imgs")
 os.makedirs(save_path, exist_ok=True)
 
-# Collect files yo
 arrow_files = []
 if not os.path.isdir(synthtext_raw):
     print(f"Error: Directory not found: {synthtext_raw}")
@@ -44,6 +43,8 @@ arrow_files.sort()
 if not arrow_files:
     print("Error: No data files found. Check your directory structure.")
     sys.exit(1)
+
+print(f"Found {len(arrow_files)} data files.")
 
 images = []
 collected_count = 0
@@ -68,10 +69,9 @@ for f in arrow_files:
         continue
 
 if not image_key:
-    # Final fallback if detection failed
     image_key = "image" 
 
-# --- Main Loop ---
+print(f"Using image column: {image_key}")
 print(f"Starting scan. Target: {MAX_IMAGES} images (1 every {SAMPLE_RATE})")
 
 for arrow in arrow_files:
@@ -79,10 +79,10 @@ for arrow in arrow_files:
     try:
         ds = HFDataset.from_file(arrow)
         count_in_file = len(ds)
+        print(f"Processing file: {filename} ({count_in_file} rows)")
         
     except Exception as e:
-        # Silently skip corrupt files
-        print(f"Skipping corrupt file: {filename}. Error: {e}")
+        print(f"Skipping 'final' file for ease of use: {filename}. Error: {e}")
         continue 
     
     for i in range(count_in_file):
@@ -103,10 +103,11 @@ for arrow in arrow_files:
                 images.append(img_tensor)
                 collected_count += 1
                 
+                print(f"Collected image {collected_count}/{MAX_IMAGES} (File: {filename}, Index: {i}, Global: {global_scan_index})")
+                
                 if collected_count >= MAX_IMAGES:
                     break
             except:
-                # Skip images that fail conversion/loading within a valid file
                 pass
         
         global_scan_index += 1
@@ -120,11 +121,11 @@ if collected_count == 0:
     print("Error: No images collected.")
     sys.exit(1)
 
-# --- Grid Generation ---
 side = int(np.ceil(np.sqrt(collected_count)))
 grid_h, grid_w = side * IMAGE_SIZE, side * IMAGE_SIZE
 grid = np.zeros((grid_h, grid_w, 3), dtype=np.float32)
 
+# Find images and place in grid
 for idx, img_tensor in enumerate(images):
     row = idx // side
     col = idx % side
@@ -138,9 +139,13 @@ for idx, img_tensor in enumerate(images):
         grid[y_start:y_end, x_start:x_end, :] = img
 
 # --- Display and Save ---
-plt.figure(figsize=(12, 12))
+plt.figure(figsize=(40, 40))
 plt.imshow(grid)
 plt.axis("off")
 out_file = os.path.join(save_path, "SynthText.png")
-plt.savefig(out_file, dpi=150)
+
+print("Saving image to imgs/")
+
+plt.savefig(out_file, dpi=300)
+plt.show()
 print(f"Grid saved to {out_file}")

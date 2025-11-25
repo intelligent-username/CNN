@@ -337,7 +337,7 @@ CNN/
     python src/import_st.py
     ```
 
-    Note that this script downloads from the HuggingFace loader, which automatically compresses
+    Note that this script downloads from the HuggingFace loader, which becomes significantly smaller than the original 40GB dataset. For the entire original, unprocessed, uncleaned, pure dataset, download from [Kaggle](https://www.kaggle.com/datasets/wassefy/synthtext).
 
 
 ### Data
