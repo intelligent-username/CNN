@@ -4,11 +4,11 @@ Word recognition training script
 
 import torch
 import torch.nn as nn
-from model import Synth90k_CNN
+from model import SynthText_CNN
 
 def main():
     """
-    Main training loop for Synth90k model.
+    Main training loop for SynthText model.
     """
     pass
 

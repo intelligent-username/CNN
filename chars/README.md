@@ -49,8 +49,12 @@ Instead, I will opt for using a different architecture: A **CRNN** (Convolutiona
 
 Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. The basic idea is that it looks at the inputted image for words, and iterates "forwards" through the image, hence the recurrence. This way, it can recognize sequences of characters without needing to classify each word individually.
 
-In this project, the CRNN we'll be implementing will have the following architecture:
+In this project, the CRNN we'll have VGG-style convolutions followed by a bidirectional LSTM, passed into dense layers for learning and softmax for classification.
 
 - 
+
+We're using CTC (Connectionist Temporal Classification) Loss as our loss function. I won't be implementing this from scratch, instead I'll just use PyTorch's built-in `nn.CTCLoss`. The point of this loss function is to take some variable-length sequence (like a word) and align it with the model's predictions, even if the predictions are longer or shorter than the actual sequence. This is super useful for text recognition, where words can have different lengths.
+
+Effectively, this model is kind of like an expansion of the one that we made for EMNIST character recognition. Of course, it, too, has limitations. For example, it may struggle with weird fonts, strong distorations, highly diagonalized text, overlapping characters, or whatever else may be missing from the training data. However, SynthText does contain a big chunk of these features. Even still, an even stronger version of this model could be made by adding attention mechanisms, transformer layers, or other modern deep learning techniques.
 
 This model is defined in `model.py`. The training loop is in `train.py`, and the data loading is in `chars/loader.py`. Follow along!

@@ -265,6 +265,8 @@ These ideas will require further reading in their own right. All of them are use
 
 \*Currently in progress
 
+In this project, we implement two CNNs: one for single, isolated character recognition using the Expanded MNIST dataset, and one for real-world end-to-end OCR using the SynthText dataset. The former uses a VGG-style architecture, while the latter implements a similar VGG-style architecture with added [recurrence](https://www.github.com/intelligent-username/RNN) to model for the sequence-like nature of the words, phrases, and so forth.
+
 ### File structure
 
 ```md
@@ -275,7 +277,7 @@ CNN/
 |
 ├── data/                   # populated after running imports 
 │   ├─── EMNIST/                # The EMNIST dataset
-│   └─── Synth90k/          # The Synth90k dataset
+│   └─── SynthText/         # The SynthText dataset
 │
 ├── imgs/                   # images used in this writeup
 |
@@ -283,7 +285,7 @@ CNN/
 |
 ├── utils/                  # (Python) source code for implementations
 │   ├─── display_e.py           # Sample EMNIST images
-│   ├─── display_s9.py          # Sample Synth90k images
+│   ├─── display_s9.py          # Sample SynthText images
 │   │                           ^^ (not crucial)
 │   ├─── import_e.py         # Download EMNIST
 │
