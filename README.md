@@ -361,9 +361,6 @@ CNN/
     *IEEE Conference on Computer Vision and Pattern Recognition*, 2016.  
     https://arxiv.org/abs/1604.06646. Accessed 24 Nov. 2025.
 
-
-
-
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)

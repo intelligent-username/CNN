@@ -2,9 +2,12 @@
 Actually train the CNN (Updated for PyTorch 2.x+)
 """
 
+import os
 import torch
 import torch.nn as nn
 from model import EMNIST_VGG
+
+os.makedirs("../models", exist_ok=True)
 
 def main():
     from loader import build_loaders
@@ -68,7 +71,7 @@ def main():
         print("Saving current progress...")
         print("DO NOT ctrl + C")
 
-    torch.save(model, "emnist_cnn_full.pth")
+    torch.save(model, "../models/emnist_cnn_full.pth")
     print("Training complete. Model saved.")
 
 if __name__ == "__main__":
