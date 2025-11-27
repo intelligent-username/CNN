@@ -23,7 +23,7 @@ We'll be using a VGG-style CNN.
 
 ### Convolution Blocks
 
-We'll be using two VGG blocks. Both will consist of layers that have stride and padding of 1, with kernel sizes being 3x3
+We'll be using two VGG blocks. Both will consist of layers that have stride and padding of 1, with kernel sizes being 3x3. Each one is followed by maxpooling (for downsampling) and batch normalization (for regularization).
 
 **Block 1**
 
@@ -41,9 +41,15 @@ We'll be using two VGG blocks. Both will consist of layers that have stride and 
 - ReLU again
 - MaxPool2D with pool size of 2x2
 
+**Block 3**
+- Convd2D with 128 filters
+
+**Block 4**
+- Conv2D with 256 filters
+
 ### Dense Layers
 
-Once the convolutions are done, we pass the data through a Flatten layer to convert the 2D matrices into a 1D vector. Then, we pass to the Dense layers.
+Once the convolutions are done, we pass the data through a Flatten layer to convert the 2D matrices into a 1D vector. Then, we pass to the Dense layers. The first dense layer learns the features, and the second dense layer classifies.
 
 ## Results
 

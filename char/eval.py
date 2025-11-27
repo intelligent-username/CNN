@@ -1,37 +1,45 @@
 """
-Evaluate the CNN's accuracy.
+Evaluating the model's accuracy using the official EMNIST test set.
 """
 
 import torch
-from loader import val_loader
-from model import EMNIST_VGG
+from loader import build_loaders
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model = EMNIST_VGG(num_classes=62)
-model.load_state_dict(torch.load("emnist_cnn.pth"))
-model = model.to(device)
-model.eval()  # Turn off dropout
+    _, val_loader, _ = build_loaders(batch_size=512, num_workers=0, use_test=True)
 
-criterion = torch.nn.CrossEntropyLoss()
+    model = torch.load(
+        "../models/emnist_cnn_full.pth",
+        map_location=device,
+        weights_only=False
+    )
+    model.to(device)
+    model.eval()
 
-total_loss = 0
-correct = 0
-total_samples = 0
+    criterion = torch.nn.CrossEntropyLoss()
 
-with torch.no_grad():  # Disable gradient computation
-    for images, labels in val_loader:
-        images, labels = images.to(device), labels.to(device)
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        total_loss += loss.item() * images.size(0)  # sum over batch
+    total_loss = 0
+    correct = 0
+    total = 0
 
-        predicted = outputs.argmax(dim=1)
-        correct += (predicted == labels).sum().item()
-        total_samples += labels.size(0)
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images = images.to(device)
+            labels = labels.to(device)
 
-avg_loss = total_loss / total_samples
-accuracy = correct / total_samples
+            out = model(images)
+            loss = criterion(out, labels)
 
-print(f"Validation Loss: {avg_loss:.4f}")
-print(f"Validation Accuracy: {accuracy:.4f}")
+            total_loss += loss.item() * images.size(0)
+            correct += (out.argmax(1) == labels).sum().item()
+            total += labels.size(0)
+            
+
+    print("Average Loss", total_loss / total)
+    print("Accuracy", correct / total)
+
+if __name__ == "__main__":
+    main()
+

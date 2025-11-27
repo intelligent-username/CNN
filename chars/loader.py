@@ -35,7 +35,7 @@ class HuggingFaceSynthText(Dataset):
         return img, label
 
 
-def build_loaders(batch_size=2048, num_workers=4, val_fraction=0.1):
+def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1):
     """
     Build train and validation DataLoaders for SynthText dataset.
     """
