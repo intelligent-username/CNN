@@ -13,3 +13,8 @@ venv/
 env/
 ENV/
 .venv
+
+# Temporary checkpoints
+*OLD*.pth
+
+*~*
