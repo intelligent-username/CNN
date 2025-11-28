@@ -1,5 +1,6 @@
 """
-Load the data in a way that PyTorch can use for training, with small augmentations
+Load the data in a way that PyTorch can use.
+Augments the training data to improve robustness.
 """
 
 import os
@@ -38,10 +39,10 @@ def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1, use_test=Fals
     train_size = int((1.0 - val_fraction) * dataset_size)
     val_size = dataset_size - train_size
 
-    # Split datasets
+    # Split
     train_data, val_data = random_split(emnist_full, [train_size, val_size])
 
-    # Assign transforms: only training data gets augmentation
+    # Transforms
     train_data.dataset.transform = train_transform
     val_data.dataset.transform = val_transform
 
@@ -59,6 +60,7 @@ def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1, use_test=Fals
         num_workers=num_workers
     )
 
+    # Slight inefficiency here with loading in the correct data split but can fix later.
     if use_test:
         test_emnist = datasets.EMNIST(
             root=emnist_root,

@@ -1,5 +1,6 @@
 """
-This is the VGG-style model that will be trained
+VGG-style CNN for EMNIST character classification.
+See the README for a better description.
 """
 
 # Note: input layers aren't needed since the first convolutional layer will work with the images directly
@@ -26,7 +27,7 @@ class EMNIST_VGG(nn.Module):
     The actual CNN that will be trained.
     Brought to you by composition.
     """
-    
+
     def __init__(self, num_classes=62):
         super(EMNIST_VGG, self).__init__()
         

@@ -23,33 +23,39 @@ We'll be using a VGG-style CNN.
 
 ### Convolution Blocks
 
-We'll be using two VGG blocks. Both will consist of layers that have stride and padding of 1, with kernel sizes being 3x3. Each one is followed by maxpooling (for downsampling) and batch normalization (for regularization).
+The model uses four convolutional blocks, each using ReLU after each layer, MaxPool2D, dropout, and batch normalization. The details are as follows:
 
 **Block 1**
 
-- A Conv2D layer with 32 filters
-- Passed into ReLU activation
-- Another Conv2D layer with 32 filters
-- ReLU again
-- MaxPool2D with pool size of 2x2
+- Conv2D with 32 filters
+- Another Conv2D with 32 filters
+- MaxPool2D with a pool size of 2x2 and stride of 2
 
 **Block 2**
 
 - Conv2D with 64 filters
 - ReLU activation
 - Another Conv2D with 64 filters
-- ReLU again
-- MaxPool2D with pool size of 2x2
+- MaxPool2D with a pool size of 2x2 and stride of 2
 
 **Block 3**
-- Convd2D with 128 filters
+
+- Conv2D with 128 filters
+- Another Conv2D with 128 filters
+- MaxPool2D with a pool size of 2x2 and stride of 1
 
 **Block 4**
+
 - Conv2D with 256 filters
+- Another Conv2D with 256 filters
+- MaxPool2D with a pool size of 2x2 and stride of 1
 
 ### Dense Layers
 
-Once the convolutions are done, we pass the data through a Flatten layer to convert the 2D matrices into a 1D vector. Then, we pass to the Dense layers. The first dense layer learns the features, and the second dense layer classifies.
+After the convolutional blocks, the data is passed through:
+1. A Flatten layer to convert the 2D matrices into a 1D vector.
+2. A fully connected layer with 256 units and a dropout of 0.5 for regularization.
+3. A final fully connected layer for classification into 62 classes.
 
 ## Results
 

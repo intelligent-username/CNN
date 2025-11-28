@@ -259,6 +259,7 @@ In addition to the core CNN architecture, there are several add-ons and techniqu
 - **Regularization**: this is how we prevent overfitting. Often, we turn to dropout. Dropout is the technique of randomly setting a fraction of the input units to zero during training. This helps prevent overfitting by forcing the network to learn more robust features. We may also use other regularization techniques, such as weight decay.
 - **Data Augmentation**: This involves generating additional training data by applying random transformations (e.g., rotations, flips, scaling) to the existing dataset. Data augmentation helps improve the model's generalization by exposing it to a wider variety of examples. It might also involve directly modifying the current state of the training data, such as seen in the [EMNIST augmentation script](char/loader.py).
 - **Attention Mechanisms**: Attention mechanisms can be integrated into CNNs to allow the model to focus on specific parts of the input image that are more relevant for the task at hand. This can improve performance, especially in tasks like image captioning or object detection.
+- **Early Stopping**: Early stopping is when we check for some condition and stop the gradient descent algorithm if it's met. For example, in the two CNNs implemented in this project, we stop training if the validation loss hasn't improved for 2 consecutive epochs. This saves time and resources, prevents overfitting, and gets rid of any need for re-training. But be careful not to stop too early, set the patience term appropriately.
 - **Transfer Learning**: This technique involves using a pre-trained CNN model (trained on a large dataset like ImageNet) as a starting point for a new task. By fine-tuning the pre-trained model on a smaller dataset, we can leverage the learned features and reduce training time. We won't be doing this, but it can be done with our models, once they are made.
 - **Checkpointing**: is when we save a model's state to continue training later. This isn't as much of an architectural decision as it is a practical one. Note that, if continuing training for too long, you risk overfitting, so ensure that strong regularization is in place or that the epochs are limited.
 - Carefully consider the **training process**, for example, implement *graceful exits*, appropriate gradient descent *batch sizes* (depending on your hardware), and so forth, as these models can take a while to train. Even the relatively simple ones created in this project took a long time to train.
@@ -367,6 +368,4 @@ CNN/
 
 ---
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-
-This project is licensed under the MIT License.
+Copyright &copy; 2025 Varak Tanashian. See the [LICENSE](LICENSE.md) file for details.
