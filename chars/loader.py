@@ -1,85 +1,51 @@
 """
-Load SynthText (HuggingFace: wendlerc/CaptionedSynthText) into PyTorch DataLoaders
+Load the data in a way that PyTorch can use.
+Augments the training data to improve robustness.
 """
 
 import os
+import torch as th
+from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
-from torchvision import transforms
-from datasets import load_dataset
-from torch.utils.data import Dataset
 
 
-class HuggingFaceSynthText(Dataset):
-    """
-    Wraps the Hugging Face SynthText dataset so PyTorch can use it.
-    """
-    def __init__(self, hf_dataset_split, transform=None):
-        self.hf_ds = hf_dataset_split
-        self.transform = transform
-        print(f"[HuggingFaceSynthText] Dataset wrapper created for {len(self.hf_ds)} samples.")
+def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1, use_test=False):
+    print("Processing data...")
 
-    def __len__(self):
-        return len(self.hf_ds)
-
-    def __getitem__(self, idx):
-        item = self.hf_ds[idx]
-        img = item["image"]      # PIL Image
-        label = item["text"]     # text label / caption
-
-        if self.transform:
-            img = self.transform(img)
-
-        if idx % 100000 == 0 and idx > 0:
-            print(f"[HuggingFaceSynthText] Accessed {idx} samples...")
-
-        return img, label
-
-
-def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1):
-    """
-    Build train and validation DataLoaders for SynthText dataset.
-    """
-    print("[SynthText Loader] Starting processing...")
-
-    # Path resolution
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    synthtext_root = os.path.join(project_root, "data", "SynthText")
-    os.makedirs(synthtext_root, exist_ok=True)
+    emnist_root = os.path.join(project_root, "data")
 
-    print(f"[SynthText Loader] Using dataset cache directory: {synthtext_root}")
+    # Define transforms
+    train_transform = transforms.Compose([
+        transforms.RandomRotation(degrees=10),
+        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ])
 
-    # Download / load from HF
-    print("[SynthText Loader] Loading HuggingFace dataset...")
-    ds = load_dataset(
-        "wendlerc/CaptionedSynthText",
-        cache_dir=synthtext_root
+    val_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ])
+
+    emnist_full = datasets.EMNIST(
+        root=emnist_root,
+        split="byclass",
+        train=True,
+        download=True,
+        transform=train_transform
     )
-    print("[SynthText Loader] Done loading dataset metadata.")
-    print(f"[SynthText Loader] Available splits: {list(ds.keys())}")
-    print(f"[SynthText Loader] Number of samples in 'train': {len(ds['train'])}")
 
-    # Transform
-    print("[SynthText Loader] Setting up transforms...")
-    transform = transforms.ToTensor()
-
-    # Wrap dataset
-    print("[SynthText Loader] Wrapping dataset...")
-    dataset = HuggingFaceSynthText(ds["train"], transform=transform)
-
-    print(f"[SynthText Loader] Total samples: {len(dataset)}")
-    print("[SynthText Loader] Splitting into train/validation...")
-
-    # Split
-    dataset_size = len(dataset)
+    dataset_size = len(emnist_full)
     train_size = int((1.0 - val_fraction) * dataset_size)
-    if train_size >= dataset_size:
-        train_size = dataset_size - 1
     val_size = dataset_size - train_size
 
-    train_data, val_data = random_split(dataset, [train_size, val_size])
+    # Split
+    train_data, val_data = random_split(emnist_full, [train_size, val_size])
 
-    print(f"[SynthText Loader] Train: {train_size}, Validation: {val_size}")
-    print("[SynthText Loader] Building DataLoaders...")
+    # Transforms
+    train_data.dataset.transform = train_transform
+    val_data.dataset.transform = val_transform
 
     train_loader = DataLoader(
         train_data,
@@ -91,10 +57,27 @@ def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1):
     val_loader = DataLoader(
         val_data,
         batch_size=batch_size,
+        shuffle=False,
         num_workers=num_workers
     )
 
-    print("[SynthText Loader] DataLoaders ready.")
+    if use_test:
+        test_emnist = datasets.EMNIST(
+            root=emnist_root,
+            split="byclass",
+            train=False,
+            download=True,
+            transform=val_transform
+        )
+        test_loader = DataLoader(
+            test_emnist,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers
+        )
+        return train_loader, val_loader, test_loader, val_data
+
+    print("Done processing.")
     return train_loader, val_loader, val_data
 
 
