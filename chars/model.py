@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from __future__ import annotations
 from typing import List
 
-# NOTE: nn.Module inheritance enables PyTorch's autograd functionality automatically.
+# NOTE: nn.Module inheritance enables PyTorch's autograd functionality automatically. Don't touch it
 
 class LSTM(nn.Module):
     """

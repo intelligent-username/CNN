@@ -1,5 +1,5 @@
 """
-Evaluating the model's accuracy using the official EMNIST test set.
+Evaluate the model's accuracy using the official EMNIST test set.
 """
 
 import torch

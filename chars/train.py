@@ -5,6 +5,8 @@ Evaluated with char/eval.py
 Can continue training by simply re-running this script.
 """
 
+# This loop is basically done
+
 import os
 import time
 

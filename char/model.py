@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class ConvBlock(nn.Module):
-    """Generic convolutional block: 2 conv layers + ReLU + MaxPool"""
+    """Convolutional block: 2 conv layers, ReLU, MaxPool"""
     def __init__(self, in_channels, out_channels, padding=1, pool_kernel=2, pool_stride=2):
         super(ConvBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=padding)

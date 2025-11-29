@@ -1,6 +1,8 @@
 """
-Evaluates the model's accuracy using the official EMNIST test set.
+Make test split, evaluate model, print.
 """
+
+# NOTE: This file needs TONS of updates, for now it's just a lil clone of the other eval.py
 
 import torch
 from loader import build_loaders
