@@ -1,51 +1,63 @@
 """
-Load the data in a way that PyTorch can use.
-Augments the training data to improve robustness.
+Load SynthText (HuggingFace) into PyTorch DataLoaders.
 """
 
-# Fix this too
-
 import os
+import pandas as pd
 import torch as th
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, random_split
+from torchvision import transforms
+from datasets import load_dataset
 
 
-def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1, use_test=False):
-    print("Processing data...")
+class HuggingFaceSynthText(Dataset):
+    def __init__(self, hf_dataset_split, transform=None):
+        self.hf_ds = hf_dataset_split
+        self.transform = transform
+        print(f"[HuggingFaceSynthText] Wrapped {len(self.hf_ds)} samples.")
+
+    def __len__(self):
+        return len(self.hf_ds)
+
+    def __getitem__(self, idx):
+        item = self.hf_ds[idx]
+        img = item["image"]
+        text = item["text"]
+        if self.transform:
+            img = self.transform(img)
+        return img, text
+
+
+def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1):
+    print("Processing SynthText...")
 
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    emnist_root = os.path.join(project_root, "data")
+    synth_root = os.path.join(project_root, "data", "SynthText", "raw")
 
-    # Define transforms
     train_transform = transforms.Compose([
-        transforms.RandomRotation(degrees=10),
-        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+        transforms.RandomRotation(5),
+        transforms.RandomResizedCrop(size=224, scale=(0.8, 1.0)),
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
     ])
 
     val_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
     ])
 
-    emnist_full = datasets.EMNIST(
-        root=emnist_root,
-        split="byclass",
-        train=True,
-        download=True,
-        transform=train_transform
-    )
+    ds = load_dataset(
+        "wendlerc/CaptionedSynthText",
+        cache_dir=synth_root
+    )["train"]
 
-    dataset_size = len(emnist_full)
-    train_size = int((1.0 - val_fraction) * dataset_size)
+    full_dataset = HuggingFaceSynthText(ds, transform=None)
+
+    dataset_size = len(full_dataset)
+    train_size = int(dataset_size * (1 - val_fraction))
     val_size = dataset_size - train_size
 
-    # Split
-    train_data, val_data = random_split(emnist_full, [train_size, val_size])
+    train_data, val_data = random_split(full_dataset, [train_size, val_size])
 
-    # Transforms
     train_data.dataset.transform = train_transform
     val_data.dataset.transform = val_transform
 
@@ -63,31 +75,29 @@ def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1, use_test=Fals
         num_workers=num_workers
     )
 
-    if use_test:
-        test_emnist = datasets.EMNIST(
-            root=emnist_root,
-            split="byclass",
-            train=False,
-            download=True,
-            transform=val_transform
-        )
-        test_loader = DataLoader(
-            test_emnist,
-            batch_size=batch_size,
-            shuffle=False,
-            num_workers=num_workers
-        )
-        return train_loader, val_loader, test_loader, val_data
-
-    print("Done processing.")
+    print("Done processing SynthText.")
     return train_loader, val_loader, val_data
 
 
 if __name__ == "__main__":
-    print("[SynthText Loader] Running loader self-test :)")
+    print("[SynthText Loader] Running loader self-test")
+
     train_loader, val_loader, val_data = build_loaders(
         batch_size=64,
         num_workers=4,
         val_fraction=0.1
     )
-    print("Test finished.")
+
+    batch = next(iter(train_loader))
+    imgs, labels = batch
+
+    df = pd.DataFrame({
+        "train_batches": [len(train_loader)],
+        "val_batches": [len(val_loader)],
+        "train_size": [len(train_loader.dataset)],
+        "val_size": [len(val_loader.dataset)],
+        "sample_batch_shape": [tuple(imgs.shape)],
+        "example_text": [labels[0]],
+    })
+
+    print(df)

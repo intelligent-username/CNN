@@ -1,5 +1,6 @@
 """
-Download the SynthText dataset from HuggingFace and write it into the data/ folder.
+Download the SynthText dataset from HuggingFace
+Write to data/SynthText/raw
 """
 
 import os
@@ -9,7 +10,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import pandas as pd
 
-print("Starting up...")
+print("Starting download...")
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 data_root = os.path.join(project_root, "data")
@@ -25,7 +26,6 @@ else:
     download_needed = True
 
 if download_needed:
-    # Load SynthText dataset from Hugging Face, store shards locally
     ds = load_dataset(
         "wendlerc/CaptionedSynthText",
         cache_dir=synthtext_root
@@ -33,11 +33,16 @@ if download_needed:
     print("[SynthText Downloader] Dataset downloaded successfully.")
 else:
     # Still load the dataset object from cache
-    ds = load_dataset(
-        "wendlerc/CaptionedSynthText",
-        cache_dir=synthtext_root
-    )
-    print("[SynthText Downloader] Dataset loaded from cache.")
+    try:
+        ds = load_dataset(
+            "wendlerc/CaptionedSynthText",
+            cache_dir=synthtext_root
+        )
+        print("[SynthText Downloader] Loaded in the dataset from cache.")
+    except Exception as e:
+        print(f"[SynthText Downloader] Error loading dataset from cache: {e}")
+        print("[SynthText Downloader] Please delete the existing data/SynthText/raw folder and re-run the script.")
+        exit(1)
 
 print(f"[SynthText Downloader] Available splits: {list(ds.keys())}")
 print(f"[SynthText Downloader] Number of samples in 'train' split: {len(ds['train'])}")
