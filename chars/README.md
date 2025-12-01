@@ -41,7 +41,7 @@ We may want to follow the next paper by Jaderberg et al, [Synthetic Data and Art
 - 2 Fully Connected Layers, both with ReLU activations and Dropout. Usually 4096 neurons each.
 - Softmax for Classifcation
 
-However, notice that this architecture is absolutely *massive*. Even if you had pretty strong specs by today's standards, which would be something like an RTX 5080 with 12GB VRAM, a strong 12-core AMD CPU, 32GB of RAM, a fast SSD, and so forth, it would still take about an hour and a half to train for just one epoch on the full Synth90k dataset. Note that this is already some 10x faster thant he hardware they had back when this paper was published. As such, training this architecture to convergence would take days, if not weeks. There are simply so many parameters that it's not worth the time investment, at least for this project.
+Notice that this architecture is pretty big. Even if you had pretty strong specs by today's standards, which would be something like an RTX 5080 with 12GB VRAM, a strong 12-core AMD CPU, etc., it would still take about an hour and a half to train a single epoch on the full Synth90k dataset. Note that this is already some 10x faster thant he hardware they had back when this paper was published. As such, training this architecture to convergence would take days, if not weeks. There are simply so many parameters that it's not worth the time investment, at least for this project.
 
 Not the mention, this architecture has some limitations as well. It's practically acting as a 90-thousand-word classifier, so it can't recognize words outside of its training vocabulary. For example, if one of our dictionaries misses a new slang term, has a typo, or simply misses rare words, the model will choke.
 
@@ -49,9 +49,31 @@ Instead, I will opt for using a different architecture: A **CRNN** (Convolutiona
 
 Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. The basic idea is that it looks at the inputted image for words, and iterates "forwards" through the image, hence the recurrence. This way, it can recognize sequences of characters without needing to classify each word individually.
 
-In this project, the CRNN we'll have VGG-style convolutions followed by a bidirectional LSTM, passed into dense layers for learning and softmax for classification.
+We'll also be using the [SynthText](https://arxiv.org/abs/1604.06646) dataset, since it's more complex and realistic. This dataset has several words placed in a variety of natural scenes, randomly mixed, and with random fonts and styles. This helps the model generalize.
 
-- 
+Now, since we're dealing with complex sequences of words, we also need a way to detect and split up the words. The CRNN itself is only a tool for categorizing (or 'transcribing') the word, but we need to first recognize them in the first place. This requires some sort of text detector. Since the material behind this isn't quite relevant for this project, I'll just be reusing `DBNET++` recognizer that's build into `PyTorch`. The CRNN will have VGG-style convolutions followed by a bidirectional LSTM, passed into dense layers for learning and softmax for classification. More specifically, our architecture will consist of:
+
+### Preprocessing
+
+- No extra distortions; the original dataset already has enough warps, rotations, and perspective changes
+- Load images in using PIL, convert to grayscale
+- In each image, detect text regions using DBNET++
+- Crop detected text regions, resize to fixed height (e.g., 32 pixels)
+- Pass resized images to the CRNN model
+
+### CNN + RNN
+
+- Convolutional Block 1: 2 convolution layers, 64 filters each, 3×3 kernel, ReLU activation, max pooling 2×2
+- Convolutional Block 2: 2 convolution layers, 128 filters each, 3×3 kernel, ReLU activation, max pooling 2×2
+- Convolutional Block 3: 3 convolution layers, 256 filters each, 3×3 kernel, ReLU activation, max pooling 2×2
+- Convolutional Block 4: 3 convolution layers, 512 filters each, 3×3 kernel, ReLU activation, max pooling 2×1
+- Convolutional Block 5: 3 convolution layers, 512 filters each, 3×3 kernel, ReLU activation, max pooling 2×1
+- Bidirectional LSTM layers: 2 layers, hidden size 256 each
+
+### Feedforward + Classification
+
+- Dense layers: 1–2 fully connected layers depending on output size
+- Classification layer: final softmax over character set
 
 We're using CTC (Connectionist Temporal Classification) Loss as our loss function. I won't be implementing this from scratch, instead I'll just use PyTorch's built-in `nn.CTCLoss`. The point of this loss function is to take some variable-length sequence (like a word) and align it with the model's predictions, even if the predictions are longer or shorter than the actual sequence. This is super useful for text recognition, where words can have different lengths.
 
