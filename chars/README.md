@@ -55,28 +55,36 @@ Now, since we're dealing with complex sequences of words, we also need a way to 
 
 ### Preprocessing
 
-- No extra distortions; the original dataset already has enough warps, rotations, and perspective changes
-- Load images in using PIL, convert to grayscale
+- No extra distortions (the original dataset already has enough warps, rotations, and perspective changes)
+- Convert images to PIL and convert to grayscale
 - In each image, detect text regions using DBNET++
 - Crop detected text regions, resize to fixed height (e.g., 32 pixels)
 - Pass resized images to the CRNN model
 
-### CNN + RNN
+### CNN
 
-- Convolutional Block 1: 2 convolution layers, 64 filters each, 3×3 kernel, ReLU activation, max pooling 2×2
-- Convolutional Block 2: 2 convolution layers, 128 filters each, 3×3 kernel, ReLU activation, max pooling 2×2
-- Convolutional Block 3: 3 convolution layers, 256 filters each, 3×3 kernel, ReLU activation, max pooling 2×2
-- Convolutional Block 4: 3 convolution layers, 512 filters each, 3×3 kernel, ReLU activation, max pooling 2×1
-- Convolutional Block 5: 3 convolution layers, 512 filters each, 3×3 kernel, ReLU activation, max pooling 2×1
-- Bidirectional LSTM layers: 2 layers, hidden size 256 each
+- Convolutional Block 1: 2 convolution layers, 64 filters each, 3×3 kernel, ReLU, max pooling 2×2
+- Convolutional Block 2: 2 convolution layers, 128 filters each, 3×3 kernel, ReLU, max pooling 2×2
+- Convolutional Block 3: 3 convolution layers, 256 filters each, 3×3 kernel, ReLU, max pooling 2×2
+- Convolutional Block 4: 3 convolution layers, 512 filters each, 3×3 kernel, ReLU, max pooling 2×1
+- Convolutional Block 5: 3 convolution layers, 512 filters each, 3×3 kernel, ReLU, max pooling 2×1
+
+### Decoder (Attention + RNN)
+
+- Bidirectional LSTM layers: 2 layers, hidden size 256 each.
+- Attention mechanism computes alignment weights between encoder feature sequences and decoder time steps.
+- Decoder outputs characters one at a time, guided by attention.
+- Luong short-term dependencies will be used for attention scoring.
 
 ### Feedforward + Classification
 
 - Dense layers: 1–2 fully connected layers depending on output size
 - Classification layer: final softmax over character set
 
-We're using CTC (Connectionist Temporal Classification) Loss as our loss function. I won't be implementing this from scratch, instead I'll just use PyTorch's built-in `nn.CTCLoss`. The point of this loss function is to take some variable-length sequence (like a word) and align it with the model's predictions, even if the predictions are longer or shorter than the actual sequence. This is super useful for text recognition, where words can have different lengths.
+### Loss
 
-Effectively, this model is kind of like an expansion of the one that we made for EMNIST character recognition. Of course, it, too, has limitations. For example, it may struggle with weird fonts, strong distorations, highly diagonalized text, overlapping characters, or whatever else may be missing from the training data. However, SynthText does contain a big chunk of these features. Even still, an even stronger version of this model could be made by adding attention mechanisms, transformer layers, or other modern deep learning techniques.
+- Cross-entropy loss.
+
+Effectively, this model is kind of like an expansion of the one that we made for EMNIST character recognition. The attention mechanisms help understand bigger distortions and context. The RNN layers help it learn sequences
 
 This model is defined in `model.py`. The training loop is in `train.py`, and the data loading is in `chars/loader.py`. Follow along!
