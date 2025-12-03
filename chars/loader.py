@@ -21,10 +21,16 @@ class HuggingFaceSynthText(Dataset):
 
     def __getitem__(self, idx):
         item = self.hf_ds[idx]
+
+        # Native SynthText HF format:
+        #   item["image"]  → PIL image
+        #   item["text"]   → list of word strings (ignored for now)
         img = item["image"]
         text = item["text"]
+
         if self.transform:
             img = self.transform(img)
+
         return img, text
 
 
@@ -45,8 +51,9 @@ def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1):
         transforms.ToTensor(),
     ])
 
+    # Fixed: use real SynthText, not CaptionedSynthText
     ds = load_dataset(
-        "wendlerc/CaptionedSynthText",
+        "aimagelab/synthtext",
         cache_dir=synth_root
     )["train"]
 
