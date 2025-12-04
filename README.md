@@ -370,6 +370,8 @@ CNN/
 
     Baek, Youngmin, et al. “Character Region Awareness for Text Detection.” *Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition*, 2019, pp. 9365–9374.
 
+    GitHub Repo: [https://github.com/clovaai/CRAFT-pytorch/](https://github.com/clovaai/CRAFT-pytorch/)
+
 ---
 
 Copyright &copy; 2025 Varak Tanashian. See the [LICENSE](LICENSE.md) for details.
