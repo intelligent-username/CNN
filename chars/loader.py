@@ -1,110 +1,85 @@
+"""  
+Copyright (c) 2019-present NAVER Corp.
+MIT License
 """
-Load SynthText (HuggingFace) into PyTorch DataLoaders.
-"""
 
-import os
-import pandas as pd
-import torch as th
-from torch.utils.data import Dataset, DataLoader, random_split
-from torchvision import transforms
-from datasets import load_dataset
+# -*- coding: utf-8 -*-
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
+from vgg16_bn import vgg16_bn, init_weights
 
-class HuggingFaceSynthText(Dataset):
-    def __init__(self, hf_dataset_split, transform=None):
-        self.hf_ds = hf_dataset_split
-        self.transform = transform
-        print(f"[HuggingFaceSynthText] Wrapped {len(self.hf_ds)} samples.")
+class double_conv(nn.Module):
+    def __init__(self, in_ch, mid_ch, out_ch):
+        super(double_conv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch + mid_ch, mid_ch, kernel_size=1),
+            nn.BatchNorm2d(mid_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_ch, out_ch, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
 
-    def __len__(self):
-        return len(self.hf_ds)
-
-    def __getitem__(self, idx):
-        item = self.hf_ds[idx]
-
-        # Native SynthText HF format:
-        #   item["image"]  → PIL image
-        #   item["text"]   → list of word strings (ignored for now)
-        img = item["image"]
-        text = item["text"]
-
-        if self.transform:
-            img = self.transform(img)
-
-        return img, text
+    def forward(self, x):
+        x = self.conv(x)
+        return x
 
 
-def build_loaders(batch_size=512, num_workers=4, val_fraction=0.1):
-    print("Processing SynthText...")
+class CRAFT(nn.Module):
+    def __init__(self, pretrained=False, freeze=False):
+        super(CRAFT, self).__init__()
 
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    synth_root = os.path.join(project_root, "data", "SynthText", "raw")
+        """ Base network """
+        self.basenet = vgg16_bn(pretrained, freeze)
 
-    train_transform = transforms.Compose([
-        transforms.RandomRotation(5),
-        transforms.RandomResizedCrop(size=224, scale=(0.8, 1.0)),
-        transforms.ToTensor(),
-    ])
+        """ U network """
+        self.upconv1 = double_conv(1024, 512, 256)
+        self.upconv2 = double_conv(512, 256, 128)
+        self.upconv3 = double_conv(256, 128, 64)
+        self.upconv4 = double_conv(128, 64, 32)
 
-    val_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-    ])
+        num_class = 2
+        self.conv_cls = nn.Sequential(
+            nn.Conv2d(32, 32, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(32, 16, kernel_size=3, padding=1), nn.ReLU(inplace=True),
+            nn.Conv2d(16, 16, kernel_size=1), nn.ReLU(inplace=True),
+            nn.Conv2d(16, num_class, kernel_size=1),
+        )
 
-    # Fixed: use real SynthText, not CaptionedSynthText
-    ds = load_dataset(
-        "aimagelab/synthtext",
-        cache_dir=synth_root
-    )["train"]
+        init_weights(self.upconv1.modules())
+        init_weights(self.upconv2.modules())
+        init_weights(self.upconv3.modules())
+        init_weights(self.upconv4.modules())
+        init_weights(self.conv_cls.modules())
+        
+    def forward(self, x):
+        """ Base network """
+        sources = self.basenet(x)
 
-    full_dataset = HuggingFaceSynthText(ds, transform=None)
+        """ U network """
+        y = torch.cat([sources[0], sources[1]], dim=1)
+        y = self.upconv1(y)
 
-    dataset_size = len(full_dataset)
-    train_size = int(dataset_size * (1 - val_fraction))
-    val_size = dataset_size - train_size
+        y = F.interpolate(y, size=sources[2].size()[2:], mode='bilinear', align_corners=False)
+        y = torch.cat([y, sources[2]], dim=1)
+        y = self.upconv2(y)
 
-    train_data, val_data = random_split(full_dataset, [train_size, val_size])
+        y = F.interpolate(y, size=sources[3].size()[2:], mode='bilinear', align_corners=False)
+        y = torch.cat([y, sources[3]], dim=1)
+        y = self.upconv3(y)
 
-    train_data.dataset.transform = train_transform
-    val_data.dataset.transform = val_transform
+        y = F.interpolate(y, size=sources[4].size()[2:], mode='bilinear', align_corners=False)
+        y = torch.cat([y, sources[4]], dim=1)
+        feature = self.upconv4(y)
 
-    train_loader = DataLoader(
-        train_data,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
-    )
+        y = self.conv_cls(feature)
 
-    val_loader = DataLoader(
-        val_data,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers
-    )
+        return y.permute(0,2,3,1), feature
 
-    print("Done processing SynthText.")
-    return train_loader, val_loader, val_data
-
-
-if __name__ == "__main__":
-    print("[SynthText Loader] Running loader self-test")
-
-    train_loader, val_loader, val_data = build_loaders(
-        batch_size=64,
-        num_workers=4,
-        val_fraction=0.1
-    )
-
-    batch = next(iter(train_loader))
-    imgs, labels = batch
-
-    df = pd.DataFrame({
-        "train_batches": [len(train_loader)],
-        "val_batches": [len(val_loader)],
-        "train_size": [len(train_loader.dataset)],
-        "val_size": [len(val_loader.dataset)],
-        "sample_batch_shape": [tuple(imgs.shape)],
-        "example_text": [labels[0]],
-    })
-
-    print(df)
+if __name__ == '__main__':
+    model = CRAFT(pretrained=True).cuda()
+    output, _ = model(torch.randn(1, 3, 768, 768).cuda())
+    print(output.shape)

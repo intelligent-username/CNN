@@ -365,7 +365,11 @@ CNN/
     "**Synthetic Data for Text Localisation in Natural Images**."  
     *IEEE Conference on Computer Vision and Pattern Recognition*, 2016.  
     https://arxiv.org/abs/1604.06646. Accessed 24 Nov. 2025.
+  
+4. CRAFT Paper for Text Detection
+
+    Baek, Youngmin, et al. “Character Region Awareness for Text Detection.” *Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition*, 2019, pp. 9365–9374.
 
 ---
 
-Copyright &copy; 2025 Varak Tanashian. See the [LICENSE](LICENSE.md) file for details.
+Copyright &copy; 2025 Varak Tanashian. See the [LICENSE](LICENSE.md) for details.

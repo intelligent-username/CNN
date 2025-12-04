@@ -1,116 +1,134 @@
 """
-Actually train the CNN.
-Saves to ../models/emnist_cnn_full.pth
-Evaluated with char/eval.py
-Can continue training by simply re-running this script.
+Train the SynthText OCR model.
+Includes:
+- CRAFT for text detection, cropping
+- Reading order reconstruction
+- Variable-width batching
+- Checkpointing
 """
-
-# This loop is basically done
 
 import os
 import time
-
 import traceback
 import torch
 import torch.nn as nn
-from model import EMNIST_VGG
+from torch.utils.data import DataLoader
+
 from loader import build_loaders
+from model import SynthText_CRNN
+from text import tokenize_text, collate_fn
+from detector import DBNet
 
 os.makedirs("../models", exist_ok=True)
 
-def main():
-    """"
-    Main training loop for SynthText model.
+def process_batch(batch_images, detector, device):
     """
-    
-    
-    train_loader, val_loader, val_data = build_loaders(batch_size=512, num_workers=4, val_fraction=0.1)
+    Detect text regions, crop, and resize for OCR model.
+    Returns list of image tensors and mapping to original order.
+    """
+    crops = []
+    order_idx = []
+    for i, img in enumerate(batch_images):
+        boxes = detector.detect(img)
+        boxes.sort(key=lambda b: (b[1], b[0]))  # top-to-bottom, left-to-right
+        for box in boxes:
+            crop = detector.crop_and_resize(img, box)  # match method name in DBNet
+            crops.append(crop)
+            order_idx.append(i)
+    return crops, order_idx
 
+def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
-    if device.type == "cuda":
-        print("CUDA device:", torch.cuda.get_device_name(0))
 
-    save_location = "../models/EMNIST_CNN.pth"
-    if os.path.isfile(save_location) and os.path.getsize(save_location) > 0:
-        print(f"Existing model found at {save_location}, loading...")
-        model = torch.load(save_location, map_location=device, weights_only=False)
-        model = model.to(device)
-    else:
-        model = EMNIST_VGG(num_classes=62).to(device)
+    train_loader, val_loader, test_loader, val_subset = build_loaders(
+        batch_size=16, num_workers=6
+    )
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    model = SynthText_CRNN().to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    criterion = nn.CrossEntropyLoss(ignore_index=0)
+    scaler = torch.amp.GradScaler(enabled=(device.type=='cuda'))
 
-    scaler = torch.amp.GradScaler('cuda')
+    detector = DBNet()
+
+    save_location = "../models/ocr_attn_checkpoint.pth"
+    start_epoch = 0
+    if os.path.isfile(save_location):
+        print("Loading checkpoint...")
+        ckpt = torch.load(save_location, map_location=device)
+        model.load_state_dict(ckpt['model_state'])
+        optimizer.load_state_dict(ckpt['optim_state'])
+        start_epoch = ckpt['epoch'] + 1
 
     num_epochs = 40
 
-    print("Starting training...")
-
     try:
-        for epoch in range(num_epochs):
-            start_time = time.time()
-
+        for epoch in range(start_epoch, num_epochs):
             model.train()
+            start_time = time.time()
             running_loss = 0
 
-            for images, labels in train_loader:
-                images, labels = images.to(device), labels.to(device)
+            for images, texts in train_loader:
+                images = [img.to(device) for img in images]
+                crops, order_idx = process_batch(images, detector, device)
+                if not crops:
+                    continue
+
+                tokenized_targets = [tokenize_text(texts[i]) for i in order_idx]
+                batch_inputs, batch_targets = collate_fn(crops, tokenized_targets, device)
 
                 optimizer.zero_grad()
-
-                with torch.amp.autocast('cuda'):
-                    outputs = model(images)
-                    loss = criterion(outputs, labels)
+                with torch.amp.autocast(device_type=device.type):
+                    outputs = model(batch_inputs)
+                    T, B, C = outputs.shape
+                    targets = batch_targets.permute(1, 0)
+                    loss = criterion(outputs.reshape(T*B, C), targets.reshape(T*B))
 
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
-
-                running_loss += loss.item() * images.size(0)
+                running_loss += loss.item() * B
 
             avg_train_loss = running_loss / len(train_loader.dataset)
             epoch_duration = time.time() - start_time
+            print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Duration: {epoch_duration:.2f}s")
 
-            print(
-                f"Epoch {epoch + 1}/{num_epochs}, "
-                f"Train Loss: {avg_train_loss:.4f}, "
-                f"Duration: {epoch_duration:.2f} seconds"
-            )
-
+            # Validation
             model.eval()
-
             val_loss = 0
-            val_correct = 0
             val_total = 0
             with torch.no_grad():
-                for images, labels in val_loader:
-                    images, labels = images.to(device), labels.to(device)
-                    outputs = model(images)
-                    loss = criterion(outputs, labels)
-                    val_loss += loss.item() * images.size(0)
-                    val_correct += (outputs.argmax(1) == labels).sum().item()
-                    val_total += labels.size(0)
-            avg_val_loss = val_loss / val_total
-            val_accuracy = val_correct / val_total
-            print(f"Validation Loss: {avg_val_loss:.4f}, Accuracy: {val_accuracy:.4f}")
-            model.train()
+                for images, texts in val_loader:
+                    images = [img.to(device) for img in images]
+                    crops, order_idx = process_batch(images, detector, device)
+                    if not crops:
+                        continue
+                    tokenized_targets = [tokenize_text(texts[i]) for i in order_idx]
+                    batch_inputs, batch_targets = collate_fn(crops, tokenized_targets, device)
+                    outputs = model(batch_inputs)
+                    T, B, C = outputs.shape
+                    targets = batch_targets.permute(1, 0)
+                    loss = criterion(outputs.reshape(T*B, C), targets.reshape(T*B))
+                    val_loss += loss.item() * B
+                    val_total += B
+            avg_val_loss = val_loss / max(val_total, 1)
+            print(f"Validation Loss: {avg_val_loss:.4f}")
+
+            # Save checkpoint
+            torch.save({
+                'epoch': epoch,
+                'model_state': model.state_dict(),
+                'optim_state': optimizer.state_dict(),
+            }, save_location)
 
     except KeyboardInterrupt:
-        torch.save(model, save_location)
-
-        print("\nTraining interrupted by user")
-        print(traceback.format_exc())
-        print("Saving current progress...")
-    except Exception:
-        torch.save(model, save_location)
-        print("Training crashed for some reason")
-        print(traceback.format_exc())
-
-    torch.save(model, save_location)
-
-    print("Training ended. Model saved.")
+        print("Training interrupted by user. Saving checkpoint...")
+        torch.save({
+            'epoch': epoch,
+            'model_state': model.state_dict(),
+            'optim_state': optimizer.state_dict(),
+        }, save_location)
 
 if __name__ == "__main__":
     main()

@@ -51,13 +51,13 @@ Most importantly, this type of model is a lot simpler and faster to train than t
 
 We'll also be using the [SynthText](https://arxiv.org/abs/1604.06646) dataset, since it's more complex and realistic. This dataset has several words placed in a variety of natural scenes, randomly mixed, and with random fonts and styles. This helps the model generalize.
 
-Now, since we're dealing with complex sequences of words, we also need a way to detect and split up the words. The CRNN itself is only a tool for categorizing (or 'transcribing') the word, but we need to first recognize them in the first place. This requires some sort of text detector. Since the material behind this isn't quite relevant for this project, I'll just be reusing `DBNET++` recognizer that's build into `PyTorch`. The CRNN will have VGG-style convolutions followed by a bidirectional LSTM, passed into dense layers for learning and softmax for classification. More specifically, our architecture will consist of:
+Now, since we're dealing with complex sequences of words, we also need a way to detect and split up the words. The CRNN itself is only a tool for categorizing (or 'transcribing') the word, but we need to first recognize them in the first place. This requires some sort of text detector. Since the material behind this isn't quite relevant for this project, I'll just be reusing a pretrained `DB++` detector. The CRNN will have VGG-style convolutions followed by a bidirectional LSTM, passed into dense layers for learning and softmax for classification. More specifically, our architecture will consist of:
 
 ### Preprocessing
 
 - No extra distortions (the original dataset already has enough warps, rotations, and perspective changes)
 - Convert images to PIL and convert to grayscale
-- In each image, detect text regions using DBNET++
+- In each image, detect text regions using CRAFT
 - Crop detected text regions, resize to fixed height (e.g., 32 pixels)
 - Pass resized images to the CRNN model
 

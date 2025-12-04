@@ -1,7 +1,7 @@
 """
 Actually train the CNN.
-Saves to ../models/emnist_cnn_full.pth
-Evaluated with char/eval.py
+Saves (checkpoints) to ../models/emnist_cnn_full.pth
+Evaluate with char/eval.py
 Can continue training by simply re-running this script.
 """
 

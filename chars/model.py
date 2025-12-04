@@ -2,12 +2,12 @@
 RCNN + Encoder/Decoder OCR Model
 """
 
+from __future__ import annotations
+from typing import List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from __future__ import annotations
-from typing import List
 
 # NOTE: nn.Module inheritance enables PyTorch's autograd functionality automatically
 # So don't touch it
