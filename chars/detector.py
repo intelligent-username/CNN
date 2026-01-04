@@ -9,8 +9,11 @@ MIT License
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms
 
-from basenet.vgg16_bn import vgg16_bn, init_weights
+from PIL import Image
+
+from vgg16_bn import vgg16_bn, init_weights
 
 class double_conv(nn.Module):
     def __init__(self, in_ch, mid_ch, out_ch):
@@ -80,6 +83,59 @@ class CRAFT(nn.Module):
         y = self.conv_cls(feature)
 
         return y.permute(0,2,3,1), feature
+
+    def detect(self, img, text_threshold=0.7, link_threshold=0.4, low_text=0.4):
+        """
+        Detect text regions in an image.
+        Returns list of bounding boxes [(x1, y1, x2, y2), ...]
+        """
+        # Preprocess image
+        if isinstance(img, Image.Image):
+            img = transforms.ToTensor()(img)
+        if img.dim() == 3:
+            img = img.unsqueeze(0)
+        img = img.to(next(self.parameters()).device)
+        
+        with torch.no_grad():
+            y, _ = self.forward(img)
+        
+        # Post-process to get bounding boxes
+        score_text = y[0, :, :, 0].cpu().numpy()
+        score_link = y[0, :, :, 1].cpu().numpy()
+        
+        # Simple thresholding - you may want more sophisticated post-processing
+        boxes = self._get_boxes(score_text, score_link, text_threshold, link_threshold)
+        return boxes
+    
+    def _get_boxes(self, score_text, score_link, text_threshold, link_threshold):
+        """Extract bounding boxes from score maps."""
+        import cv2
+        import numpy as np
+        
+        text_score = (score_text > text_threshold).astype(np.uint8)
+        contours, _ = cv2.findContours(text_score, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        boxes = []
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            if w > 5 and h > 5:  # Filter tiny boxes
+                boxes.append((x, y, x + w, y + h))
+        return boxes
+    
+    def crop_and_resize(self, img, box, target_height=32):
+        """Crop and resize text region to fixed height."""
+        x1, y1, x2, y2 = box
+        
+        if isinstance(img, torch.Tensor):
+            crop = img[:, y1:y2, x1:x2]
+        else:
+            crop = transforms.ToTensor()(img)[:, y1:y2, x1:x2]
+        
+        # Resize to fixed height, variable width
+        h, w = crop.shape[1], crop.shape[2]
+        new_w = int(w * target_height / h)
+        crop = F.interpolate(crop.unsqueeze(0), size=(target_height, new_w), mode='bilinear', align_corners=False)
+        return crop.squeeze(0)
 
 if __name__ == '__main__':
     model = CRAFT(pretrained=True).cuda()

@@ -1,85 +1,154 @@
-"""  
-Copyright (c) 2019-present NAVER Corp.
-MIT License
+"""SynthText (CaptionedSynthText) dataloading utilities.
+
+This module is used by chars/train.py via build_loaders().
+
+The HuggingFace dataset returns samples shaped like:
+- jpg: PIL image
+- json: dict containing ocr_annotation { bounding_boxes: [quad...], text: [str...] }
+
+This loader trains on *every word* in each image by returning all word crops.
+The DataLoader collate function flattens per-image word lists into one big list
+of (crop, text) for the batch.
 """
 
-# -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import os
+from typing import Callable, List, Tuple
+
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from vgg16_bn import vgg16_bn, init_weights
-
-class double_conv(nn.Module):
-    def __init__(self, in_ch, mid_ch, out_ch):
-        super(double_conv, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_ch + mid_ch, mid_ch, kernel_size=1),
-            nn.BatchNorm2d(mid_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(mid_ch, out_ch, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        x = self.conv(x)
-        return x
+from PIL import Image
+from datasets import load_dataset
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
+from torchvision import transforms
 
 
-class CRAFT(nn.Module):
-    def __init__(self, pretrained=False, freeze=False):
-        super(CRAFT, self).__init__()
+def _project_root() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-        """ Base network """
-        self.basenet = vgg16_bn(pretrained, freeze)
 
-        """ U network """
-        self.upconv1 = double_conv(1024, 512, 256)
-        self.upconv2 = double_conv(512, 256, 128)
-        self.upconv3 = double_conv(256, 128, 64)
-        self.upconv4 = double_conv(128, 64, 32)
+def _synthtext_cache_dir() -> str:
+    return os.path.join(_project_root(), "data", "SynthText", "raw")
 
-        num_class = 2
-        self.conv_cls = nn.Sequential(
-            nn.Conv2d(32, 32, kernel_size=3, padding=1), nn.ReLU(inplace=True),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1), nn.ReLU(inplace=True),
-            nn.Conv2d(32, 16, kernel_size=3, padding=1), nn.ReLU(inplace=True),
-            nn.Conv2d(16, 16, kernel_size=1), nn.ReLU(inplace=True),
-            nn.Conv2d(16, num_class, kernel_size=1),
-        )
 
-        init_weights(self.upconv1.modules())
-        init_weights(self.upconv2.modules())
-        init_weights(self.upconv3.modules())
-        init_weights(self.upconv4.modules())
-        init_weights(self.conv_cls.modules())
-        
-    def forward(self, x):
-        """ Base network """
-        sources = self.basenet(x)
+def _quad_to_bbox(quad: List[List[float]], w: int, h: int) -> Tuple[int, int, int, int]:
+    xs = [p[0] for p in quad]
+    ys = [p[1] for p in quad]
+    x1 = max(int(min(xs)), 0)
+    y1 = max(int(min(ys)), 0)
+    x2 = min(int(max(xs)), w)
+    y2 = min(int(max(ys)), h)
+    if x2 <= x1 or y2 <= y1:
+        return 0, 0, w, h
+    return x1, y1, x2, y2
 
-        """ U network """
-        y = torch.cat([sources[0], sources[1]], dim=1)
-        y = self.upconv1(y)
 
-        y = F.interpolate(y, size=sources[2].size()[2:], mode='bilinear', align_corners=False)
-        y = torch.cat([y, sources[2]], dim=1)
-        y = self.upconv2(y)
+class CaptionedSynthTextAllWordsDataset(Dataset):
+    """Returns (list[word_crop_tensor], list[word_text]) per image."""
 
-        y = F.interpolate(y, size=sources[3].size()[2:], mode='bilinear', align_corners=False)
-        y = torch.cat([y, sources[3]], dim=1)
-        y = self.upconv3(y)
+    def __init__(
+        self,
+        split: str = "train",
+        transform: Callable | None = None,
+        cache_dir: str | None = None,
+        target_height: int = 32,
+        max_width: int = 512,
+    ):
+        self.cache_dir = cache_dir or _synthtext_cache_dir()
+        self.ds = load_dataset("wendlerc/CaptionedSynthText", cache_dir=self.cache_dir, split=split)
+        self.transform = transform or transforms.ToTensor()
+        self.target_height = int(target_height)
+        self.max_width = int(max_width)
 
-        y = F.interpolate(y, size=sources[4].size()[2:], mode='bilinear', align_corners=False)
-        y = torch.cat([y, sources[4]], dim=1)
-        feature = self.upconv4(y)
+    def __len__(self) -> int:
+        return len(self.ds)
 
-        y = self.conv_cls(feature)
+    def __getitem__(self, idx: int):
+        item = self.ds[int(idx)]
+        img: Image.Image = item["jpg"]
+        meta = item.get("json", {})
+        ocr = meta.get("ocr_annotation", {})
 
-        return y.permute(0,2,3,1), feature
+        texts: List[str] = list(ocr.get("text", []))
+        bbs = list(ocr.get("bounding_boxes", []))
 
-if __name__ == '__main__':
-    model = CRAFT(pretrained=True).cuda()
-    output, _ = model(torch.randn(1, 3, 768, 768).cuda())
-    print(output.shape)
+        crops: List[torch.Tensor] = []
+        crop_texts: List[str] = []
+
+        if texts and bbs:
+            for text, quad in zip(texts, bbs):
+                if not isinstance(text, str):
+                    continue
+                text = text.strip("\n")
+                if text == "":
+                    continue
+
+                x1, y1, x2, y2 = _quad_to_bbox(quad, img.size[0], img.size[1])
+                # Filter tiny boxes (helps avoid degenerate conv/pool shapes)
+                if (x2 - x1) < 5 or (y2 - y1) < 5:
+                    continue
+
+                crop_img = img.crop((x1, y1, x2, y2))
+
+                # Normalize crop sizes: fixed height, capped width.
+                if self.target_height > 0 and crop_img.size[1] > 0:
+                    new_w = int(round(crop_img.size[0] * (self.target_height / crop_img.size[1])))
+                    new_w = max(new_w, 1)
+                    if self.max_width > 0:
+                        new_w = min(new_w, self.max_width)
+                    crop_img = crop_img.resize((new_w, self.target_height), resample=Image.BILINEAR)
+
+                crop_tensor = self.transform(crop_img)
+                crops.append(crop_tensor)
+                crop_texts.append(text)
+
+        return crops, crop_texts
+
+
+def _flatten_words_collate(batch):
+    """Flatten per-image word lists into per-batch word lists."""
+    crops: List[torch.Tensor] = []
+    texts: List[str] = []
+    for crop_list, text_list in batch:
+        crops.extend(crop_list)
+        texts.extend(text_list)
+    return crops, texts
+
+
+def build_loaders(
+    batch_size: int = 16,
+    num_workers: int = 0,
+    use_test: bool = True,
+    val_frac: float = 0.02,
+    test_frac: float = 0.02,
+    seed: int = 1337,
+):
+    """Build train/val/test loaders.
+
+    Returns: (train_loader, val_loader, test_loader, val_subset)
+    """
+
+    full = CaptionedSynthTextAllWordsDataset(split="train")
+    n = len(full)
+    val_n = int(n * val_frac)
+    test_n = int(n * test_frac) if use_test else 0
+    train_n = n - val_n - test_n
+    if train_n <= 0:
+        raise ValueError("Split fractions too large; no samples left for training")
+
+    gen = torch.Generator().manual_seed(seed)
+    splits = random_split(full, [train_n, val_n, test_n] if use_test else [train_n, val_n], generator=gen)
+    train_ds = splits[0]
+    val_ds = splits[1]
+    test_ds = splits[2] if use_test else None
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, collate_fn=_flatten_words_collate)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=_flatten_words_collate)
+    test_loader = (
+        DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=_flatten_words_collate)
+        if test_ds is not None
+        else None
+    )
+
+    val_subset = Subset(val_ds, list(range(min(512, len(val_ds)))))
+    return train_loader, val_loader, test_loader, val_subset

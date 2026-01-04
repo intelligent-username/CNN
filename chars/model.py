@@ -9,6 +9,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from text import MAX_LABEL_LEN, VOCAB_SIZE
+
 # NOTE: nn.Module inheritance enables PyTorch's autograd functionality automatically
 # So don't touch it
 
@@ -124,17 +126,20 @@ class SynthText_CRNN(nn.Module):
     rec_block: RecBlock
     dense_layer: nn.Linear
 
-    def __init__(self):
+    def __init__(self, num_classes: int = VOCAB_SIZE, max_steps: int = MAX_LABEL_LEN):
         super(SynthText_CRNN, self).__init__()
 
+        self.num_classes = num_classes
+        self.max_steps = max_steps
+
         Layerz = [
-            ConvLayer(in_channels=1, out_channels=64),
+            ConvLayer(in_channels=3, out_channels=64),
             ConvLayer(in_channels=64, out_channels=128),
-            ConvLayer(in_channels=128, out_channels=256, pool_kernel=2, pool_stride=(2,1)),
-            ConvLayer(in_channels=256, out_channels=512, pool_kernel=2, pool_stride=(2,1)),
+            ConvLayer(in_channels=128, out_channels=256, pool_kernel=(2,1), pool_stride=(2,1)),
+            ConvLayer(in_channels=256, out_channels=512, pool_kernel=(2,1), pool_stride=(2,1)),
             ConvLayer(in_channels=512, out_channels=512),
-            ConvLayer(in_channels=512, out_channels=512, pool_kernel=2, pool_stride=(2,1)),
-            ConvLayer(in_channels=512, out_channels=512, kernel_size=2, stride=1, padding=0, pool_kernel=1, pool_stride=1),
+            ConvLayer(in_channels=512, out_channels=512, pool_kernel=(1,2), pool_stride=(1,2)),
+            ConvLayer(in_channels=512, out_channels=512, kernel_size=1, stride=1, padding=0, pool_kernel=1, pool_stride=1),
         ]
         self.conv_block = ConvBlock(layers=Layerz)
 
@@ -150,10 +155,13 @@ class SynthText_CRNN(nn.Module):
         # Decoder LSTM for character-by-character prediction
         self.decoder = nn.LSTMCell(input_size=512, hidden_size=512)
 
-        self.dense_layer = nn.Linear(512, 99)
+        self.dense_layer = nn.Linear(512, num_classes)
 
     def forward(self, x):
         x = self.conv_block(x)
+        # Collapse height dimension to 1 for sequence modeling over width.
+        if x.dim() == 4 and x.size(2) != 1:
+            x = F.adaptive_avg_pool2d(x, (1, x.size(3)))
         x = x.squeeze(2)
         x = x.permute(0, 2, 1)
 
@@ -165,7 +173,7 @@ class SynthText_CRNN(nn.Module):
         h = torch.zeros(B, 512, device=x.device)
         c = torch.zeros(B, 512, device=x.device)
 
-        steps = 25  # fixed decode length placeholder
+        steps = self.max_steps
         for _ in range(steps):
             context, _ = self.attention(encoder_seq, h)
             h, c = self.decoder(context, (h, c))

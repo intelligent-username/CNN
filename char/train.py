@@ -7,11 +7,9 @@ Can continue training by simply re-running this script.
 
 import os
 import time
-
 import traceback
 import torch
 import torch.nn as nn
-import traceback
 from model import EMNIST_VGG
 from loader import build_loaders
 
@@ -20,7 +18,7 @@ os.makedirs("../models", exist_ok=True)
 def main():
 
     # Note: num_workers > 1 usually breaks the interruption handling on Windows
-    # Mac/Linux/WSL don't have tihs problem since they're not forced to use spawn
+    # Mac/Linux/WSL don't have this problem since they're not forced to use spawn
     # So I'd recommend them if you're planning on interrupting the training
     train_loader, val_loader, val_data = build_loaders(batch_size=512, num_workers=4, val_fraction=0.1)
 
@@ -30,12 +28,19 @@ def main():
         print("CUDA device:", torch.cuda.get_device_name(0))
 
     save_location = "../models/EMNIST_CNN.pth"
+    
+    # Always initialize the architecture first to ensure valid code linkage
+    model = EMNIST_VGG(num_classes=62).to(device)
+
     if os.path.isfile(save_location) and os.path.getsize(save_location) > 0:
         print(f"Existing model found at {save_location}, loading...")
-        model = torch.load(save_location, map_location=device, weights_only=False)
-        model = model.to(device)
-    else:
-        model = EMNIST_VGG(num_classes=62).to(device)
+        # Load the weights (state_dict) into the architecture
+        # Use weights_only=False if loading an old full-model file, but standard is True for state_dict
+        try:
+            model.load_state_dict(torch.load(save_location, map_location=device, weights_only=True))
+        except RuntimeError:
+            # Fallback for legacy full-model saves if present
+             model = torch.load(save_location, map_location=device, weights_only=False)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -133,27 +138,26 @@ def main():
 
 
     except KeyboardInterrupt:
-        torch.save(model, save_location)
+        torch.save(model.state_dict(), save_location)
 
         print("\nTraining interrupted by user")
-        print(traceback.format_exc())
+        # print(traceback.format_exc())
         print("Saving current progress...")
         print("DO NOT ctrl + C")
-    except Exception:
-        torch.save(model, save_location)
+        return # Prevent execution from falling through to the final save
+
+    except Exception as e:
+        torch.save(model.state_dict(), save_location)
         print("Training crashed for some reason")
         print(traceback.format_exc())
-        print(Exception)
+        print(e)
         print("Saving current progress...")
         print("DO NOT ctrl + C")
+        return # Prevent execution from falling through to the final save
 
-    # Save model (architecture + weights)
-    torch.save(model, save_location)
-
-    # Saves weights only (basically useless since the architecture is so tiny anyway)
-    # torch.save(model.state_dict(), save_location)
-
-    # NOTE: If you save weights only, make sure to go back up to line 35 and set weights_only=True
+    # Save model weights (state_dict)
+    # This is superior to saving the full model object as it decouples data from code
+    torch.save(model.state_dict(), save_location)
 
     print("Training ended. Model saved.")
 
@@ -163,7 +167,7 @@ if __name__ == "__main__":
     # import torch.multiprocessing as mp
     # mp.set_start_method('fork', force=True)
 
-    # But it'll proabbly break on Windows 
+    # But it'll probably break on Windows 
     # And it's not necessary on UNIX-like systems
     # So comment it out
     # But might need later
