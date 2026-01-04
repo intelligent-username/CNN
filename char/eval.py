@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from loader import build_loaders
+from model import EMNIST_VGG
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -13,12 +14,15 @@ def main():
     # Load only the test loader
     _, _, test_loader, _ = build_loaders(batch_size=1024, num_workers=6, use_test=True)
 
-    model = torch.load(
+    # Initialize model architecture first
+    model = EMNIST_VGG(num_classes=62).to(device)
+    
+    # Load the saved state dictionary (weights)
+    model.load_state_dict(torch.load(
         "../models/EMNIST_CNN.pth",
         map_location=device,
         weights_only=False
-    )
-    model.to(device)
+    ))
     model.eval()
 
     criterion = nn.CrossEntropyLoss()

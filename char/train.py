@@ -1,6 +1,6 @@
 """
 Actually train the CNN.
-Saves (checkpoints) to ../models/emnist_cnn_full.pth
+Saves (checkpoints) to ../models/EMNIST_CNN.pth
 Evaluate with char/eval.py
 Can continue training by simply re-running this script.
 """
@@ -37,8 +37,8 @@ def main():
         # Load the weights (state_dict) into the architecture
         # Use weights_only=False if loading an old full-model file, but standard is True for state_dict
         try:
-            model.load_state_dict(torch.load(save_location, map_location=device, weights_only=True))
-        except RuntimeError:
+            model.load_state_dict(torch.load(save_location, map_location=device, weights_only=False))
+        except (RuntimeError, TypeError):
             # Fallback for legacy full-model saves if present
              model = torch.load(save_location, map_location=device, weights_only=False)
 
@@ -47,16 +47,15 @@ def main():
 
     scaler = torch.amp.GradScaler('cuda')
 
-    # NOTE: Empirically, I have found that, after 10 epochs, training loss goes down but validation loss starts going up. 
+    # NOTE: Empirically, I have found that, after exactly 10 epochs, training loss goes down but validation loss starts going up. 
     # In most cases, that would be a good place to stop.
-    # But, with THIS data, even when validation loss is increasing, since it's so augmented and the model is being tuned, letting it "overfit" actually makes it perform better on the actual test set.
-    # Counterintuitive, and I can't quite explain why this is happening, but, after much experimentation, it just simply is.
+    # But, with THIS data, even when validation loss is increasing, since it's so augmented and the model is being tuned, letting it "overfit" a little bit kind of makes it perform better on the actual test set.
 
     # To add the validation checks and early stopping,
     # just un-comment the 'patience' counter, threshold, and checker
-    # on lines 58, 59, 60, and 124-132
+    # on lines 63, 64, 65, and 128-136
 
-    num_epochs = 40
+    num_epochs = 10
 
     # If validation gets worse for too long, stop training
 
