@@ -206,7 +206,7 @@ One specific thing to consider is the data pipeline. When working with pictures,
 
 ### Data Pipeline Principles
 
-- **Normalization**: Scale pixel values to a consistent range, usually `[0, 1]` or `[-1, 1]`, so that the network trains more stably.
+- **Normalization**: Scale pixel values to the [0, 1] so that the network trains more stably.
 - **Resizing / Reshaping**: Convert all images to the same height and width to match the input layer dimensions.
 - **colour Handling**: Convert images to a consistent colour format (grayscale or RGB).
 - **Augmentation**: Apply random transformations (flips, rotations, crops, etc.) to increase dataset diversity and reduce overfitting.
@@ -303,48 +303,71 @@ CNN/
 
 ### Installation
 
-- Ensure you have Python installed
+Choose one of the following methods to establish your environment.
 
-1. Clone this repo
+#### Method I: Local Execution
 
-    ```bash
-    git clone https://github.com/yourusername/CNN.git
-    cd CNN
-    ```
+1. **Clone the Repository**
 
-2. Create a virtual Environment
+```bash
+git clone [https://github.com/intellligent-username/CNN.git](https://github.com/intellligent-username/CNN.git)
+cd CNN
+```
 
-    ```bash
-    python -m venv venv
-    # OR 
-    # conda create -n CNN
-    # (for Conda)
-    venv\Scripts\activate # or source venv/bin/activate on Unix
-    # OR
-    conda activate CNN
-    ```
+2. **Configure Virtual Environment**
 
-3. Download the dependencies
+```bash
+# Create
+python -m venv venv
+# OR: conda create -n CNN
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+# Activate
+# Windows:
+venv\Scripts\activate
+# Unix/WSL:
+source venv/bin/activate
+```
 
-4. Download the dataset(s) you want
 
-    For EMNIST:
+3. **Install Dependencies**
 
-    ```bash
-    python src/import_e.py
-    ```
+```bash
+pip install -r requirements.txt
+```
 
-    For SynthText:
 
-    ```bash
-    python src/import_st.py
-    ```
+4. **Acquire Datasets**
 
-    Note that this script downloads from the HuggingFace loader, which becomes significantly smaller than the original 40GB dataset. For the entire original, unprocessed, uncleaned, pure dataset, download from [Kaggle](https://www.kaggle.com/datasets/wassefy/synthtext).
+```bash
+python src/import_e.py   # For EMNIST
+python src/import_st.py  # For SynthText
+```
+
+#### Method II: With Docker
+
+Ensure Docker Desktop is installed and running.
+
+1. **Build the Image**
+Execute this command from the project root to compile the environment:
+
+```bash
+docker build -f .devcontainer/Dockerfile -t cnn-runner .
+```
+
+2. **Launch the Container**
+Run an interactive session with your source code mounted:
+```bash
+# Unix/WSL/PowerShell:
+docker run -it --rm -v "$(pwd):/workspace" -w /workspace cnn-runner bash
+
+# Windows Command Prompt (cmd):
+docker run -it --rm -v "%cd%:/workspace" -w /workspace cnn-runner bash
+
+```
+
+
+*Once inside the container shell, run the dataset scripts as shown in Method I (Step 4).*
+
 
 
 ### Data
