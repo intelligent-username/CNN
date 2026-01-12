@@ -2,7 +2,7 @@
 
 Here, an end-to-end CNN model is built to recognize entire words from images. This is one step up from recognizing individual characters, as it involves understanding the context and structure of words.
 
-This type of CNN trains directly on words, not on letters. If we had made a model that was really good at recognizing letters, we would have to take each picture, split it into a series of letters, recognize each letter individually, and then piece them back together into words. Although in theory this sounds like a simpler approaach than training on massive amounts of whole words, in practice it often leads to errors compounding and worse overall performance.
+This type of CNN trains directly on words, not on letters. If we had made a model that was really good at recognizing letters, we would have to take each picture, split it into a series of letters, recognize each letter individually, and then piece them back together into words. Although in theory this sounds like a simpler approach than training on massive amounts of whole words, in practice it often leads to errors compounding and worse overall performance.
 
 One issue with the former approach is the segmentation: there are countless different fonts, styles, spacings, and sizes. Another issue is that it's simply slower.
 
@@ -12,7 +12,7 @@ Recent advances, like [DeepSeek-OCR](https://deepseek.ai/blog/deepseek-ocr-conte
 
 ![Sample of SynthText](../imgs/SynthText.png)
 
-One famous dataset **Synth90k**, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition]((https://arxiv.org/abs/1406.2227)) paper by Jaderberg et al. (2014).
+One famous dataset **Synth90k**, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition](https://arxiv.org/abs/1406.2227)) paper by Jaderberg et al. (2014).
 
 It consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. For future implementations, one can take inspiration from this paper to, for example, create a more efficient version of the same dataset, make the data more complex, or even create the same kind of dataset for a different language.
 
@@ -24,7 +24,7 @@ However, a better database would be SynthText, from the paper [Synthetic Data fo
 
 When downloading from HuggingFace using the `../utils/import_st.py` script, the dataset will end up being roughly 33 GB in size. There are 85 `.tar` files, with an average size of ~560 MB. You can download it "manually" as well, such as from Kaggle [Kaggle](https://www.kaggle.com/datasets/wassefy/synthtext).
 
-Then, the data needs to be preprocessed as well, since the text is embedded in larger images. `loader.py` script handles this.
+Then, the data also needs preprocessing, since the text is embedded in larger images. The `loader.py` script handles this.
 
 ## Architecture
 
@@ -39,15 +39,15 @@ We may want to follow the next paper by Jaderberg et al, [Synthetic Data and Art
   - Conv3: 256 filters, 3×3; ReLU
   - Conv4: 512 filters, 3×3; ReLU → MaxPool(2×2)
 - 2 Fully Connected Layers, both with ReLU activations and Dropout. Usually 4096 neurons each.
-- Softmax for Classifcation
+- Softmax for classification
 
 Notice that this architecture is pretty big. Even with a strong computer, it would take a very long time to train even a single epoch on Synth90k. As such, training this architecture to convergence would take days, if not weeks.
 
 Not the mention, this architecture has some limitations as well. It's practically acting as a 90-thousand-word classifier, so it can't recognize words outside of its training vocabulary. For example, if one of our dictionaries misses a new slang term, has a typo, or simply misses rare words, the model will choke.
 
-Instead, I will opt for using a different architecture: A **BILSTM CNN** (Convolutional Bidirectional Recurrent Neural Network) with **attention mechanisms** added. This architecture ismuch more modern and combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions. The attention mechanisms help focus on relevant parts.
+Instead, I will opt for using a different architecture: A **Bi-LSTM CNN** (Convolutional Bidirectional Recurrent Neural Network) with **attention mechanisms** added. This architecture is much more modern and combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions. The attention mechanisms help focus on relevant parts.
 
-Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. The basic idea is that it looks at the inputted image for words, and iterates "forwards" through the image, hence the recurrence. This way, it can recognize sequences of characters without needing to classify each word individually.
+Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. The basic idea is that it looks at the input image for words, and iterates "forwards" through the image, hence the recurrence. This way, it can recognize sequences of characters without needing to classify each word individually.
 
 We'll also be using the [SynthText](https://arxiv.org/abs/1604.06646) dataset, since it's more complex and realistic. This dataset has several words placed in a variety of natural scenes, randomly mixed, and with random fonts and styles. This helps the model generalize. There's a total of ~800,000 images.
 

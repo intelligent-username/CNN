@@ -1,6 +1,5 @@
 """
 VGG-style CNN for EMNIST character classification.
-Augmented for maximum fidelity.
 """
 
 import torch

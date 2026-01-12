@@ -141,7 +141,7 @@ Just like other machine learning tasks, CNNs have hyperparameters that we can tu
 
 The **size** of the kernel are its dimensions. For example, a $3 \times 3$ kernel has a height and width of 3 pixels each. If we have a $1 \times 1$ kernel, then we're simply multiplying each pixel by a weight, which is equivalent to a Dense layer. Larger kernels can capture more complex features, but they also increase computational cost and may lead to overfitting.
 
-**Strides** determine how far the kernel moves at each step across the input. For example, if the stride is 1, we itereate through every pixel, whereas if the stride is 2, we skip every other pixel, and so forth. Increasing the stride will reduce the dimensions of the feature map, which can help reduce computational cost. Of course, it comes at the cost of detail.
+**Strides** determine how far the kernel moves at each step across the input. For example, if the stride is 1, we iterete through every pixel, whereas if the stride is 2, we skip every other pixel, and so forth. Increasing the stride will reduce the dimensions of the feature map, which can help reduce computational cost. Of course, it comes at the cost of detail.
 
 Whenever our kernel size is greater than one, we are bound to go 'outside' of the input's dimensions whenever we are at or near the edges. This may result in literal program crashes if we're not careful or strange, undefined behaviour if we choose to, say, wrap around the edges when we reach them. One possible solution is to add **padding**. Padding pixels are simply just a border around the original image that have some sort of pre-defined behaviour. **Zero-padding** is when we add rows and columns of zeros around the input. Without padding, we risk having the feature map be smaller than the input, which means that we have lost information.
 
@@ -208,7 +208,7 @@ One specific thing to consider is the data pipeline. When working with pictures,
 
 - **Normalization**: Scale pixel values to the [0, 1] so that the network trains more stably.
 - **Resizing / Reshaping**: Convert all images to the same height and width to match the input layer dimensions.
-- **colour Handling**: Convert images to a consistent colour format (grayscale or RGB).
+- **Colour Handling**: Convert images to a consistent colour format (grayscale or RGB).
 - **Augmentation**: Apply random transformations (flips, rotations, crops, etc.) to increase dataset diversity and reduce overfitting.
 - **Batching**: Group multiple images into batches to allow efficient matrix computations and gradient updates.
 - **Shuffling**: Randomize image order to prevent the network from learning spurious sequences in the dataset.
@@ -296,7 +296,7 @@ CNN/
 ├── .gitignore              # files to ignore in git
 ├── README.md               # this file
 ├── LICENSE                 # MIT License declaration
-└──requirements.txt         # Pythonn dependencies
+└──requirements.txt         # Python dependencies
 ```
 
 ### Installation
@@ -308,7 +308,7 @@ Choose one of the following methods to establish your environment.
 1: **Clone this repo**
 
   ```bash
-  git clone [https://github.com/intellligent-username/CNN.git](https://github.com/intellligent-username/CNN.git)
+  git clone https://github.com/intelligent-username/CNN.git
   cd CNN
   ```
 
@@ -369,11 +369,11 @@ Ensure Docker Desktop is installed and running.
 
 1. [EMNIST dataset](https://www.nist.gov/itl/products-and-services/emnist-dataset) for character recognition.
 
-    Cohen, G., Afshar, S., Tapson, J., & van Schaik, A. (2017). EMNIST: an extension of MNIST to handwritten letters. Retrieved from [http://arxiv.org/abs/1702.05373](http://arxiv.org/abs/1702.05373)
+    Cohen, G., Afshar, S., Tapson, J., & van Schaik, A. (2017). EMNIST: an extension of MNIST to handwritten letters. Retrieved from [http://arxiv.org/abs/1702.05373](http://arxiv.org/abs/1702.05373), last accessed November 14th, 2025.
 
 2. Synth90k for word recognition.
 
-   **Jaderberg, Max & Simonyan, Karen, et al** *Reading Text in the Wild with Convolutional Neural Networks.* International Journal of Computer Vision, vol. 116, no. 1, 2016, pp. 1–20. [https://www.robots.ox.ac.uk/~vgg/data/text/](https://www.robots.ox.ac.uk/~vgg/data/text/). Accessed 14 Nov. 2025.
+   **Jaderberg, Max & Simonyan, Karen, et al** *Reading Text in the Wild with Convolutional Neural Networks.* International Journal of Computer Vision, vol. 116, no. 1, 2016, pp. 1–20. [https://www.robots.ox.ac.uk/~vgg/data/text/](https://www.robots.ox.ac.uk/~vgg/data/text/). Accessed November 14th, 2025.
 
    \*Note: this dataset isn't actually used. It's only referenced in `chars/README.md` for context.
 
@@ -382,11 +382,11 @@ Ensure Docker Desktop is installed and running.
     Gupta, Ankush, Andrea Vedaldi, and Andrew Zisserman.  
     "**Synthetic Data for Text Localisation in Natural Images**."  
     *IEEE Conference on Computer Vision and Pattern Recognition*, 2016.  
-    [https://arxiv.org/abs/1604.06646](https://arxiv.org/abs/1604.06646). Accessed 24 Nov. 2025.
+    [https://arxiv.org/abs/1604.06646](https://arxiv.org/abs/1604.06646). Accessed November 24th, 2025.
   
 4. CRAFT Paper for Text Detection
 
-    Baek, Youngmin, et al. “Character Region Awareness for Text Detection.” *Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition*, 2019, pp. 9365–9374.
+    Baek, Youngmin, et al. “Character Region Awareness for Text Detection.” *Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition*, 2019, pp. 9365–9374, [https://arxiv.org/abs/1904.01941](https://arxiv.org/abs/1904.01941), Last accessed December 12th, 2025.
 
     GitHub Repo: [https://github.com/clovaai/CRAFT-pytorch/](https://github.com/clovaai/CRAFT-pytorch/)
 
