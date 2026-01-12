@@ -17,4 +17,6 @@ ENV/
 # Temporary checkpoints
 *OLD*.pth
 
+REM.md
+
 *~*

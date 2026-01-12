@@ -29,7 +29,6 @@ def main():
 
     save_location = "../models/EMNIST_CNN.pth"
     
-    # Always initialize the architecture first to ensure valid code linkage
     model = EMNIST_VGG(num_classes=62).to(device)
 
     if os.path.isfile(save_location) and os.path.getsize(save_location) > 0:
@@ -55,7 +54,7 @@ def main():
     # just un-comment the 'patience' counter, threshold, and checker
     # on lines 63, 64, 65, and 128-136
 
-    num_epochs = 10
+    num_epochs = 1
 
     # If validation gets worse for too long, stop training
 

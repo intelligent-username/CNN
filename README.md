@@ -167,7 +167,7 @@ Finally, we use the gradient to update the weights using whatever optimization a
 
 Let's take these ideas and see how we can use a convolution to transform an image.
 
-Take the following $630 \times 630$px image:
+Take the following $630 \times 630$ px image:
 
 ![Original Image](imgs/Tree.png)
 

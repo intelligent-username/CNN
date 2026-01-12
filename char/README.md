@@ -12,51 +12,43 @@ The dataset being used here is EMNIST, which is an extension of the classic MNIS
 
 ## Architecture
 
-We're going to prepare/train the CNN in 4 steps:
+We're using a VGG-style architecture optimized for EMNIST. The network is composed of four repeating Convolutional Blocks, followed by a dense classification head.
 
-1. Load the data (`loader.py`)
-2. Define the model (`model.py`)
-3. Train the model (`train.py`)
-4. Evaluate the model (`eval.py`)
+### Block Structure
 
-We'll be using a VGG-style CNN.
+Each block contains two 3x3 Convolutional layers. Every convolution is immediately followed by Batch Normalization and ReLU activation. The block concludes with MaxPooling and Dropout (0.25) to ensure robust feature extraction without overfitting.
 
-### Convolution Blocks
+### Architecture
 
-The model uses four convolutional blocks, each using ReLU after each layer, MaxPool2D, dropout, and batch normalization. The details are as follows:
+Block 1: 32 Filters (Pool Stride: 2)
 
-**Block 1**
+Block 2: 64 Filters (Pool Stride: 2)
 
-- Conv2D with 32 filters
-- Another Conv2D with 32 filters
-- MaxPool2D with a pool size of 2x2 and stride of 2
+Block 3: 128 Filters (Pool Stride: 1)
 
-**Block 2**
-
-- Conv2D with 64 filters
-- ReLU activation
-- Another Conv2D with 64 filters
-- MaxPool2D with a pool size of 2x2 and stride of 2
-
-**Block 3**
-
-- Conv2D with 128 filters
-- Another Conv2D with 128 filters
-- MaxPool2D with a pool size of 2x2 and stride of 1
-
-**Block 4**
-
-- Conv2D with 256 filters
-- Another Conv2D with 256 filters
-- MaxPool2D with a pool size of 2x2 and stride of 1
+Block 4: 256 Filters (Pool Stride: 1)
 
 ### Dense Layers
 
-After the convolutional blocks, the data is passed through:
-1. A Flatten layer to convert the 2D matrices into a 1D vector.
-2. A fully connected layer with 256 units and a dropout of 0.5 for regularization.
-3. A final fully connected layer for classification into 62 classes.
+Flatten: Converts the final 256x5x5 feature map into a 1D vector.
+
+Fully Connected: 512 units with Batch Normalization, ReLU, and Dropout (0.5).
+
+Classifier: Output layer mapping to the 62 EMNIST classes.
 
 ## Results
 
-I could've stopped the training at epoch 24, where the loss was just under 0.35. Note that this is actually decently accurate ($accuracy \neq 1 - \text{loss}$). Because of the loss function we're using, the model is punished/rewarded based on the confidence of its predictions, not just whether it's right or wrong. Also, after this point, we've hit the "elbow" of the loss curve, i.e. where the loss starts to plateau. This is because, in this dataset, there are many characters that are very difficult for even humans to tease apart, such as an uppercase `O` and the number `0`. Thus, in these cases, the model will never have high confidence, and so will always incur some loss.
+Training stops at epoch 13, at which point validation and training losses diverge. We end with a final accuracy of 88.0196%. Note that $\text{accuracy} \neq 1 - \text{loss}$. This model, despite only being 89% accurate, is actually almost always right in production. Note that, because of the loss function we're using, the model is punished/rewarded based on the confidence of its predictions, not just whether it's right or wrong. As a result, it's encouraged to "confidently" predict answers even on meaningless images.
+
+Also, after this point, we've hit the "elbow" of the loss curve, i.e. where the loss starts to plateau. This is because, in this dataset, there are many characters that are very difficult for even humans to tease apart, such as an uppercase `O` and the number `0`. Thus, in these cases, the model will never have high confidence, and so will always incur some loss.
+
+### Implementation
+
+The CNN was prepared in 4 steps:
+
+1. Data preparation done in (`loader.py`)
+2. Model definition done in (`model.py`)
+3. Trained using (`train.py`)
+4. Evaluated the model (`eval.py`)
+
+Have a look at these files for details.

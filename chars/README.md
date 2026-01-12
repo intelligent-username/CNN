@@ -41,17 +41,17 @@ We may want to follow the next paper by Jaderberg et al, [Synthetic Data and Art
 - 2 Fully Connected Layers, both with ReLU activations and Dropout. Usually 4096 neurons each.
 - Softmax for Classifcation
 
-Notice that this architecture is pretty big. Even if you had pretty strong specs by today's standards, which would be something like an RTX 5080 with 12GB VRAM, a strong 12-core AMD CPU, etc., it would still take about an hour and a half to train a single epoch on the full Synth90k dataset. Note that this is already some 10x faster thant he hardware they had back when this paper was published. As such, training this architecture to convergence would take days, if not weeks. There are simply so many parameters that it's not worth the time investment, at least for this project.
+Notice that this architecture is pretty big. Even with a strong computer, it would take a very long time to train even a single epoch on Synth90k. As such, training this architecture to convergence would take days, if not weeks.
 
 Not the mention, this architecture has some limitations as well. It's practically acting as a 90-thousand-word classifier, so it can't recognize words outside of its training vocabulary. For example, if one of our dictionaries misses a new slang term, has a typo, or simply misses rare words, the model will choke.
 
-Instead, I will opt for using a different architecture: A **BILSTM CNN** (Convolutional Bidirectional Recurrent Neural Network) with attention mechanisms added. This architecture combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions.
+Instead, I will opt for using a different architecture: A **BILSTM CNN** (Convolutional Bidirectional Recurrent Neural Network) with **attention mechanisms** added. This architecture ismuch more modern and combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions. The attention mechanisms help focus on relevant parts.
 
 Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. The basic idea is that it looks at the inputted image for words, and iterates "forwards" through the image, hence the recurrence. This way, it can recognize sequences of characters without needing to classify each word individually.
 
-We'll also be using the [SynthText](https://arxiv.org/abs/1604.06646) dataset, since it's more complex and realistic. This dataset has several words placed in a variety of natural scenes, randomly mixed, and with random fonts and styles. This helps the model generalize.
+We'll also be using the [SynthText](https://arxiv.org/abs/1604.06646) dataset, since it's more complex and realistic. This dataset has several words placed in a variety of natural scenes, randomly mixed, and with random fonts and styles. This helps the model generalize. There's a total of ~800,000 images.
 
-Now, since we're dealing with complex sequences of words, we also need a way to detect and split up the words. The CRNN itself is only a tool for categorizing (or 'transcribing') the word, but we need to first recognize them in the first place. This requires some sort of text detector. Since the material behind this isn't quite relevant for this project, I'll just be reusing a pretrained `DB++` detector. The CRNN will have VGG-style convolutions followed by a bidirectional LSTM, passed into dense layers for learning and softmax for classification. More specifically, our architecture will consist of:
+Now, since we're dealing with complex sequences of words, we also need a way to detect and split up the words. The CRNN itself is only a tool for categorizing (or 'transcribing') the word, but we need to first recognize them in the first place. This requires some sort of text detector. Since the material behind this isn't quite relevant for this project, I'll just be reusing a pretrained `CRAFT` detector. When training, we'll use the given bounding boxes from the dataset, but during deployment, we'll use the CRAFT detector to find text regions. Note that the CRAFT is a common architecture and not my own work.
 
 ### Preprocessing
 
@@ -88,3 +88,5 @@ Now, since we're dealing with complex sequences of words, we also need a way to 
 Effectively, this model is kind of like an expansion of the one that we made for EMNIST character recognition. The attention mechanisms help understand bigger distortions and context. The RNN layers help it learn sequences
 
 This model is defined in `model.py`. The training loop is in `train.py`, and the data loading is in `chars/loader.py`. Follow along!
+
+*NOTE: If you download the final model by cloning this repository, it might not be in the best condition since its size surpasses GitHub's recommended 50mb limit. You may want to train it yourself or download from HuggingFace (if/once I upload there later).*
