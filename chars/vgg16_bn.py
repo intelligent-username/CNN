@@ -1,5 +1,6 @@
 """
-VGG Definition for the CRAFT detector. Not written by me.
+VGG Definition for the CRAFT detector.
+Not written by me.
 
 Source:
 https://github.com/clovaai/CRAFT-pytorch/blob/master/basenet/vgg16_bn.py

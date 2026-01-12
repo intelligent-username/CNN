@@ -58,13 +58,16 @@ def _pad_images_to_max_size(crops: List[torch.Tensor]) -> torch.Tensor:
     return torch.stack(padded, dim=0)
 
 
-def collate_fn(crops, tokenized_targets, device):
-    """Pad variable-width images and return tensors suitable for training.
+def collate_fn(crops: list, tokenized_targets: list, device: torch.device):
+    """Pad crops to same width and stack into batch tensors."""
+    max_w = max(c.shape[2] for c in crops)
+    padded = []
+    for c in crops:
+        pad_amt = max_w - c.shape[2]
+        if pad_amt > 0:
+            c = F.pad(c, (0, pad_amt))  # pad right side
+        padded.append(c)
 
-    crops: list[Tensor[C,H,W]]
-    tokenized_targets: list[list[int]] fixed-length (MAX_LABEL_LEN)
-    """
-
-    batch_inputs = _pad_images_to_max_size(crops).to(device)
-    batch_targets = torch.tensor(tokenized_targets, dtype=torch.long, device=device)
+    batch_inputs = torch.stack(padded).to(device)
+    batch_targets = torch.tensor(tokenized_targets, dtype=torch.long).to(device)
     return batch_inputs, batch_targets

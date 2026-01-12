@@ -45,7 +45,7 @@ Notice that this architecture is pretty big. Even if you had pretty strong specs
 
 Not the mention, this architecture has some limitations as well. It's practically acting as a 90-thousand-word classifier, so it can't recognize words outside of its training vocabulary. For example, if one of our dictionaries misses a new slang term, has a typo, or simply misses rare words, the model will choke.
 
-Instead, I will opt for using a different architecture: A **CRNN** (Convolutional Recurrent Neural Network) with **CTC** (Connectionist Temporal Classification) loss. This architecture combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions.
+Instead, I will opt for using a different architecture: A **BILSTM CNN** (Convolutional Bidirectional Recurrent Neural Network) with attention mechanisms added. This architecture combines CNNs for feature extraction and RNNs for sequence modeling, making it well-suited for recognizing variable-length text sequences, arbitrary sequences of characters, and can generalize for different fonts, handwriting styles, and distortions.
 
 Most importantly, this type of model is a lot simpler and faster to train than the one from the earlier paper. The basic idea is that it looks at the inputted image for words, and iterates "forwards" through the image, hence the recurrence. This way, it can recognize sequences of characters without needing to classify each word individually.
 

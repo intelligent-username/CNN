@@ -1,7 +1,9 @@
 """  
-CRAFT detector implementation.
+CRAFT detector implementation (used in deployment but not training).
 Not written by me.
+
 Copyright (c) 2019-present NAVER Corp.
+https://github.com/clovaai/CRAFT-pytorch/blob/master/craft.py
 MIT License
 """
 

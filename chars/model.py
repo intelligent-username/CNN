@@ -133,19 +133,18 @@ class SynthText_CRNN(nn.Module):
         self.max_steps = max_steps
 
         Layerz = [
-            ConvLayer(in_channels=3, out_channels=64),
-            ConvLayer(in_channels=64, out_channels=128),
+            ConvLayer(in_channels=3, out_channels=32),
+            ConvLayer(in_channels=32, out_channels=64),
+            ConvLayer(in_channels=64, out_channels=128, pool_kernel=(2,1), pool_stride=(2,1)),
             ConvLayer(in_channels=128, out_channels=256, pool_kernel=(2,1), pool_stride=(2,1)),
-            ConvLayer(in_channels=256, out_channels=512, pool_kernel=(2,1), pool_stride=(2,1)),
-            ConvLayer(in_channels=512, out_channels=512),
-            ConvLayer(in_channels=512, out_channels=512, pool_kernel=(1,2), pool_stride=(1,2)),
-            ConvLayer(in_channels=512, out_channels=512, kernel_size=1, stride=1, padding=0, pool_kernel=1, pool_stride=1),
+            ConvLayer(in_channels=256, out_channels=256),
+            ConvLayer(in_channels=256, out_channels=256, pool_kernel=(1,2), pool_stride=(1,2)),
+            ConvLayer(in_channels=256, out_channels=256, kernel_size=1, stride=1, padding=0, pool_kernel=1, pool_stride=1),
         ]
         self.conv_block = ConvBlock(layers=Layerz)
 
         self.layerz = [
-            LSTM(input_size=512, hidden_size=256, num_layers=2, bidirectional=True),
-            LSTM(input_size=512, hidden_size=256, num_layers=2, bidirectional=True),
+            LSTM(input_size=256, hidden_size=256, num_layers=2, bidirectional=True),
         ]
         self.rec_block = RecBlock(layers=self.layerz)
 

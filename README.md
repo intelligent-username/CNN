@@ -154,7 +154,7 @@ In addition to these factors, we can tweak other hyperparameters that are common
 
 So now, we have all of these different operations: A network composed of layers, which are composed of neurons, which in turn have their own connections, activations, weights and convolutions, as well as some hyperparameters that we can tune. Once we find the optimal combination of these things, we can use backpropagation to find the actual weights that the model will use.
 
-Of course, use [gradient descent](https://www.github.com/intelligent-username/Gradient-Descent) to minimize the loss function, add whatever [regularization](https://www.github.com/intelligent-username/Regularization) we may need, etc. etc. Let's quickly review how it works in order to see what's going on behind the scenes.
+Of course, use [gradient descent (specifically, in this case we use Adam)](https://www.github.com/intelligent-username/Gradient-Descent) to minimize the loss function, add whatever [regularization](https://www.github.com/intelligent-username/Regularization) we may need, etc. etc. Let's quickly review how it works in order to see what's going on behind the scenes.
 
 First, there is the forward pass. At this stage, we take our current weights and biases, and use them to calculate the output of the network. This involves applying the convolutional operations, activations, and any other transformations that are part of the network architecture.
 
@@ -227,7 +227,7 @@ transform = transforms.Compose([
 
 This ensures that every image fed into the network is correctly formatted, normalized, and converted to a tensor for training.
 
-There are other general ML practices to consider as well, such as the details of the [regularization](https://www.github.com/intelligent-username/Regularization) or the [optimization](https://www.github.com/intelligent-username/Gradient-Descent).
+There are other ML considerations to make as well, such as [regularization](https://www.github.com/intelligent-username/Regularization) or the [optimization](https://www.github.com/intelligent-username/Gradient-Descent).
 
 Some specific CNN configurations have had notable success, such as AlexNet, VGG, ResNet, and so on.
 
@@ -249,9 +249,9 @@ ResNet (Residual Network) introduced the concept of residual connections, which 
 
 ## Other Considerations
 
-In addition to the core CNN architecture, there are several add-ons and techniques that can enhance performance:
+In addition to the core CNN architecture, there are several add-ons and techniques that have been added to enhance performance, but don't really need to be discussed in detail here:
 
-- **Loss Function**: we often use Cross-Entropy Loss, but there are other options for a CNN, like Hinge Loss or, CTCLoss, or something else, depending on the context.
+- **Loss Function**: we often use Cross-Entropy Loss, but there are other options for a CNN, like Hinge Loss or, CTCLoss (which was going to be used initially).
 - **Batch Normalization**: In order to "stabilize" the training process, we make sure the numbers in the neural network don't get too big or too small. For each batch of data, it calculates the average and spread (how much the numbers vary) of the outputs from a layer.
   1) For the current mini-batch, find the mean and the variance.
   2) Adjust the inputs to have an average of zero and a variance of one.
@@ -264,11 +264,9 @@ In addition to the core CNN architecture, there are several add-ons and techniqu
 - **Checkpointing**: is when we save a model's state to continue training later. This isn't as much of an architectural decision as it is a practical one. Note that, if continuing training for too long, you risk overfitting, so ensure that strong regularization is in place or that the epochs are limited.
 - Carefully consider the **training process**, for example, implement *graceful exits*, appropriate gradient descent *batch sizes* (depending on your hardware), and so forth, as these models can take a while to train. Even the relatively simple ones created in this project took a long time to train.
 
-These ideas will require further reading in their own right. All of them are useful. But, in real life, they don't all need to be used at once. Getting the basics as right as possible is the highest-ROI step.
+These ideas will require further reading in their own right. All of them are useful. They don't all need to be used at once.
 
 ## Project Details
-
-\*Currently in progress
 
 In this project, we implement two CNNs: one for single, isolated character recognition using the Expanded MNIST dataset, and one for real-world end-to-end OCR using the SynthText dataset. The former uses a VGG-style architecture, while the latter implements a similar VGG-style architecture with added [recurrence](https://www.github.com/intelligent-username/RNN) to model for the sequence-like nature of the words, phrases, and so forth.
 
@@ -276,12 +274,12 @@ In this project, we implement two CNNs: one for single, isolated character recog
 
 ```md
 CNN/
-├── char/                   # Src for single character recognition
+├── char/                   # Training single-character recognition.
 │
-├── chars/                  # Src for word recognition
+├── chars/                  # Training difficult word recognition.
 |
 ├── data/                   # populated after running imports 
-│   ├─── EMNIST/                # The EMNIST dataset
+│   ├─── EMNIST/            # The EMNIST dataset
 │   └─── SynthText/         # The SynthText dataset
 │
 ├── imgs/                   # images used in this writeup
@@ -307,68 +305,65 @@ Choose one of the following methods to establish your environment.
 
 #### Method I: Local Execution
 
-1. **Clone the Repository**
+1: **Clone this repo**
 
-```bash
-git clone [https://github.com/intellligent-username/CNN.git](https://github.com/intellligent-username/CNN.git)
-cd CNN
-```
+  ```bash
+  git clone [https://github.com/intellligent-username/CNN.git](https://github.com/intellligent-username/CNN.git)
+  cd CNN
+  ```
 
-2. **Configure Virtual Environment**
+2: **Configure Virtual Environment**
 
-```bash
-# Create
-python -m venv venv
-# OR: conda create -n CNN
+  ```bash
+  # Create
+  python -m venv venv
+  # OR: conda create -n CNN
 
-# Activate
-# Windows:
-venv\Scripts\activate
-# Unix/WSL:
-source venv/bin/activate
-```
+  # Activate
+  # Windows:
+  venv\Scripts\activate
+  # Unix/WSL:
+  source venv/bin/activate
+  ```
 
+3: **Install Dependencies**
 
-3. **Install Dependencies**
+  ```bash
+  pip install -r requirements.txt
+  ```
 
-```bash
-pip install -r requirements.txt
-```
+4: **Acquire Datasets**
 
-
-4. **Acquire Datasets**
-
-```bash
-python src/import_e.py   # For EMNIST
-python src/import_st.py  # For SynthText
-```
+  ```bash
+  python src/import_e.py   # For EMNIST
+  python src/import_st.py  # For SynthText
+  ```
 
 #### Method II: With Docker
 
 Ensure Docker Desktop is installed and running.
 
-1. **Build the Image**
-Execute this command from the project root to compile the environment:
+1: **Build the Image**
 
-```bash
-docker build -f .devcontainer/Dockerfile -t cnn-runner .
-```
+  Execute this command from the project root to compile the environment:
 
-2. **Launch the Container**
-Run an interactive session with your source code mounted:
-```bash
-# Unix/WSL/PowerShell:
-docker run -it --rm -v "$(pwd):/workspace" -w /workspace cnn-runner bash
+  ```bash
+  docker build -f .devcontainer/Dockerfile -t cnn-runner .
+  ```
 
-# Windows Command Prompt (cmd):
-docker run -it --rm -v "%cd%:/workspace" -w /workspace cnn-runner bash
+2: **Launch the Container**
 
-```
+  Run an interactive session with your source code mounted:
 
+  ```bash
+  # Unix/WSL/PowerShell:
+  docker run -it --rm -v "$(pwd):/workspace" -w /workspace cnn-runner bash
 
-*Once inside the container shell, run the dataset scripts as shown in Method I (Step 4).*
+  # Windows Command Prompt (cmd):
+  docker run -it --rm -v "%cd%:/workspace" -w /workspace cnn-runner bash
+  ```
 
-
+  *Once inside the container shell, run the dataset scripts as shown in Method I (Step 4).*
 
 ### Data
 
@@ -387,7 +382,7 @@ docker run -it --rm -v "%cd%:/workspace" -w /workspace cnn-runner bash
     Gupta, Ankush, Andrea Vedaldi, and Andrew Zisserman.  
     "**Synthetic Data for Text Localisation in Natural Images**."  
     *IEEE Conference on Computer Vision and Pattern Recognition*, 2016.  
-    https://arxiv.org/abs/1604.06646. Accessed 24 Nov. 2025.
+    [https://arxiv.org/abs/1604.06646](https://arxiv.org/abs/1604.06646). Accessed 24 Nov. 2025.
   
 4. CRAFT Paper for Text Detection
 

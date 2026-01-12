@@ -1,35 +1,18 @@
-"""SynthText (CaptionedSynthText) dataloading utilities.
-
-This module is used by chars/train.py via build_loaders().
-
-The HuggingFace dataset returns samples shaped like:
-- jpg: PIL image
-- json: dict containing ocr_annotation { bounding_boxes: [quad...], text: [str...] }
-
-This loader trains on *every word* in each image by returning all word crops.
-The DataLoader collate function flattens per-image word lists into one big list
-of (crop, text) for the batch.
-"""
-
-from __future__ import annotations
-
 import os
-from typing import Callable, List, Tuple
-
+import json
 import torch
+from typing import Callable, List, Tuple
 from PIL import Image
 from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from torchvision import transforms
-
+from torch.nn.utils.rnn import pad_sequence
 
 def _project_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-
 def _synthtext_cache_dir() -> str:
     return os.path.join(_project_root(), "data", "SynthText", "raw")
-
 
 def _quad_to_bbox(quad: List[List[float]], w: int, h: int) -> Tuple[int, int, int, int]:
     xs = [p[0] for p in quad]
@@ -38,117 +21,109 @@ def _quad_to_bbox(quad: List[List[float]], w: int, h: int) -> Tuple[int, int, in
     y1 = max(int(min(ys)), 0)
     x2 = min(int(max(xs)), w)
     y2 = min(int(max(ys)), h)
-    if x2 <= x1 or y2 <= y1:
-        return 0, 0, w, h
-    return x1, y1, x2, y2
+    return (x1, y1, x2, y2) if x2 > x1 and y2 > y1 else (0, 0, w, h)
 
+def collate_fn(batch):
+    """Pads variable width images to form a valid batch."""
+    # Filter out None/Empty items before batching
+    batch = [b for b in batch if b is not None and b[0] is not None]
+    if not batch:
+        return torch.tensor([]), []
+        
+    images, texts = zip(*batch)
+    # Reversing dimensions for pad_sequence: (C, W, H) -> (W, C, H)
+    images = [img.permute(2, 0, 1) for img in images]
+    padded_imgs = pad_sequence(images, batch_first=True, padding_value=0)
+    # Back to (B, C, H, W)
+    padded_imgs = padded_imgs.permute(0, 2, 3, 1)
+    return padded_imgs, texts
 
-class CaptionedSynthTextAllWordsDataset(Dataset):
-    """Returns (list[word_crop_tensor], list[word_text]) per image."""
-
-    def __init__(
-        self,
-        split: str = "train",
-        transform: Callable | None = None,
-        cache_dir: str | None = None,
-        target_height: int = 32,
-        max_width: int = 512,
-    ):
+class CaptionedSynthTextWordDataset(Dataset):
+    def __init__(self, split: str = "train", transform: Callable | None = None, 
+                 cache_dir: str | None = None, target_height: int = 32, 
+                 max_width: int = 512, max_cap: int | None = None):
         self.cache_dir = cache_dir or _synthtext_cache_dir()
+        print(f"[DEBUG] Loading dataset split: {split}...")
         self.ds = load_dataset("wendlerc/CaptionedSynthText", cache_dir=self.cache_dir, split=split)
         self.transform = transform or transforms.ToTensor()
-        self.target_height = int(target_height)
-        self.max_width = int(max_width)
+        self.target_height, self.max_width = int(target_height), int(max_width)
+        
+        # Suffix index file with cap if provided to avoid overwriting full index
+        suffix = f"_{max_cap}" if max_cap else ""
+        index_path = os.path.join(self.cache_dir, f"{split}_index{suffix}.json")
+        
+        if os.path.exists(index_path):
+            print(f"[DEBUG] Loading cached index from {index_path}")
+            with open(index_path, "r") as f: self.index = json.load(f)
+        else:
+            print(f"[DEBUG] No index found. Building index (Cap: {max_cap})...")
+            self.index = []
+            for i, item in enumerate(self.ds):
+                # Stop early if cap is reached
+                if max_cap is not None and i >= max_cap:
+                    print(f"[DEBUG] Hit max_cap {max_cap}. Stopping index.")
+                    break
+                    
+                if i % 5000 == 0: print(f"[PROGRESS] Indexed {i} images...")
+                ocr = item.get("json", {}).get("ocr_annotation", {})
+                for j, text in enumerate(ocr.get("text", [])):
+                    if isinstance(text, str) and text.strip(): self.index.append((i, j))
+            
+            with open(index_path, "w") as f: json.dump(self.index, f)
+        
+        print(f"[DEBUG] Dataset initialized with {len(self.index)} words.")
 
-    def __len__(self) -> int:
-        return len(self.ds)
+    def __len__(self) -> int: return len(self.index)
 
     def __getitem__(self, idx: int):
-        item = self.ds[int(idx)]
-        img: Image.Image = item["jpg"]
-        meta = item.get("json", {})
-        ocr = meta.get("ocr_annotation", {})
+        img_idx, word_idx = self.index[idx]
+        item = self.ds[img_idx]
+        img, ocr = item["jpg"], item.get("json", {}).get("ocr_annotation", {})
+        
+        # Safety check for bounds
+        if word_idx >= len(ocr["text"]): return None
+        
+        text = ocr["text"][word_idx].strip()
+        quad = ocr["bounding_boxes"][word_idx]
+        
+        x1, y1, x2, y2 = _quad_to_bbox(quad, img.size[0], img.size[1])
+        crop_img = img.crop((x1, y1, x2, y2))
+        
+        if self.target_height > 0 and crop_img.size[1] > 0:
+            ratio = self.target_height / crop_img.size[1]
+            new_w = min(max(int(round(crop_img.size[0] * ratio)), 1), self.max_width)
+            crop_img = crop_img.resize((new_w, self.target_height), resample=Image.BILINEAR)
+        
+        return self.transform(crop_img), text
 
-        texts: List[str] = list(ocr.get("text", []))
-        bbs = list(ocr.get("bounding_boxes", []))
-
-        crops: List[torch.Tensor] = []
-        crop_texts: List[str] = []
-
-        if texts and bbs:
-            for text, quad in zip(texts, bbs):
-                if not isinstance(text, str):
-                    continue
-                text = text.strip("\n")
-                if text == "":
-                    continue
-
-                x1, y1, x2, y2 = _quad_to_bbox(quad, img.size[0], img.size[1])
-                # Filter tiny boxes (helps avoid degenerate conv/pool shapes)
-                if (x2 - x1) < 5 or (y2 - y1) < 5:
-                    continue
-
-                crop_img = img.crop((x1, y1, x2, y2))
-
-                # Normalize crop sizes: fixed height, capped width.
-                if self.target_height > 0 and crop_img.size[1] > 0:
-                    new_w = int(round(crop_img.size[0] * (self.target_height / crop_img.size[1])))
-                    new_w = max(new_w, 1)
-                    if self.max_width > 0:
-                        new_w = min(new_w, self.max_width)
-                    crop_img = crop_img.resize((new_w, self.target_height), resample=Image.BILINEAR)
-
-                crop_tensor = self.transform(crop_img)
-                crops.append(crop_tensor)
-                crop_texts.append(text)
-
-        return crops, crop_texts
-
-
-def _flatten_words_collate(batch):
-    """Flatten per-image word lists into per-batch word lists."""
-    crops: List[torch.Tensor] = []
-    texts: List[str] = []
-    for crop_list, text_list in batch:
-        crops.extend(crop_list)
-        texts.extend(text_list)
-    return crops, texts
-
-
-def build_loaders(
-    batch_size: int = 16,
-    num_workers: int = 0,
-    use_test: bool = True,
-    val_frac: float = 0.02,
-    test_frac: float = 0.02,
-    seed: int = 1337,
-):
-    """Build train/val/test loaders.
-
-    Returns: (train_loader, val_loader, test_loader, val_subset)
-    """
-
-    full = CaptionedSynthTextAllWordsDataset(split="train")
+def build_loaders(batch_size: int = 16, num_workers: int = 8, use_test: bool = True, 
+                  val_frac: float = 0.02, test_frac: float = 0.02, seed: int = 1337,
+                  max_cap: int | None = None):
+    
+    # Pass max_cap to dataset init
+    full = CaptionedSynthTextWordDataset(split="train", max_cap=max_cap)
     n = len(full)
+    
     val_n = int(n * val_frac)
     test_n = int(n * test_frac) if use_test else 0
     train_n = n - val_n - test_n
+    
+    # Safety for small caps
     if train_n <= 0:
-        raise ValueError("Split fractions too large; no samples left for training")
+        train_n = n // 2
+        val_n = n - train_n
+        test_n = 0
+    
+    print(f"Splitting: Train={train_n}, Val={val_n}, Test={test_n}")
+    
+    splits = random_split(full, [train_n, val_n, test_n] if test_n > 0 else [train_n, val_n], 
+                          generator=torch.Generator().manual_seed(seed))
 
-    gen = torch.Generator().manual_seed(seed)
-    splits = random_split(full, [train_n, val_n, test_n] if use_test else [train_n, val_n], generator=gen)
-    train_ds = splits[0]
-    val_ds = splits[1]
-    test_ds = splits[2] if use_test else None
-
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, collate_fn=_flatten_words_collate)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=_flatten_words_collate)
-    test_loader = (
-        DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=_flatten_words_collate)
-        if test_ds is not None
-        else None
-    )
-
-    val_subset = Subset(val_ds, list(range(min(512, len(val_ds)))))
-    return train_loader, val_loader, test_loader, val_subset
+    loader_args = {"batch_size": batch_size, "num_workers": num_workers, "pin_memory": True, 
+                   "persistent_workers": True, "prefetch_factor": 4, "collate_fn": collate_fn}
+    
+    train_loader = DataLoader(splits[0], shuffle=True, **loader_args)
+    val_loader = DataLoader(splits[1], shuffle=False, **loader_args)
+    test_loader = DataLoader(splits[2], shuffle=False, **loader_args) if (use_test and test_n > 0) else None
+    
+    return train_loader, val_loader, test_loader, Subset(splits[1], list(range(min(512, len(splits[1])))))
