@@ -49,6 +49,7 @@ class AdditiveAttention(nn.Module):
     """
     Bahdanau additive attention for encoder-decoder alignment.
     """
+
     def __init__(self, enc_dim: int, dec_dim: int, attn_dim: int):
         super().__init__()
         self.enc_proj = nn.Linear(enc_dim, attn_dim)
@@ -68,6 +69,7 @@ class AdditiveAttention(nn.Module):
 
 class ConvLayer(nn.Module):
     """An individual convolution layer"""
+
     conv: nn.Module
     activation: nn.Module
     pool: nn.Module
@@ -96,6 +98,8 @@ class ConvLayer(nn.Module):
 
 class RecBlock(nn.Module):
     """The block of Recurrent Layers"""
+    # NOTE: was 2 now is 1
+    
     layers: List[nn.Module]
 
     def __init__(self, layers: List[nn.Module]):

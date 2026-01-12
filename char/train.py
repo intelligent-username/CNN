@@ -5,6 +5,7 @@ Evaluate with char/eval.py
 Can continue training by simply re-running this script.
 """
 
+import sys
 import os
 import time
 import traceback
@@ -136,28 +137,37 @@ def main():
 
 
     except KeyboardInterrupt:
+        print("\nTraining interrupted by user")
+        print("DO NOT ctrl + C")
+
+        print("Saving current progress...")
+
         torch.save(model.state_dict(), save_location)
 
-        print("\nTraining interrupted by user")
+        print("Saved")
         # print(traceback.format_exc())
-        print("Saving current progress...")
-        print("DO NOT ctrl + C")
-        return # Prevent execution from falling through to the final save
+        sys.exit(0)
 
     except Exception as e:
         torch.save(model.state_dict(), save_location)
         print("Training crashed for some reason")
-        print(traceback.format_exc())
         print(e)
         print("Saving current progress...")
         print("DO NOT ctrl + C")
-        return # Prevent execution from falling through to the final save
+
+        print(traceback.format_exc())
+        print("Saved")
+        sys.exit(1)
 
     # Save model weights (state_dict)
     # This is superior to saving the full model object as it decouples data from code
+
+    print("Training done")
+    print("Saving final model...")
+    
     torch.save(model.state_dict(), save_location)
 
-    print("Training ended. Model saved.")
+    print("Model saved.")
 
 if __name__ == "__main__":
     # Just for safety, we *could* add:
@@ -167,7 +177,6 @@ if __name__ == "__main__":
 
     # But it'll probably break on Windows 
     # And it's not necessary on UNIX-like systems
-    # So comment it out
     # But might need later
 
     main()
