@@ -6,10 +6,9 @@ numpy
 Pillow
 datasets
 opencv-python
-
+tqdm
 
 # Not necessary unless you want to run display_e.py or display_s9.py
 idx2numpy
 matplotlib
-tqdm
 

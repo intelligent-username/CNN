@@ -3,10 +3,8 @@ Train the SynthText OCR model.
 Includes:
 - Reading order reconstruction
 - Variable-width batching
-- Checkpointing
+- Checkpointing (now with Metadata Persistence)
 """
-
-# Make sure to update detect() and crop_and_resize() function calls to match CRAFT
 
 import os
 import time
@@ -21,39 +19,43 @@ from text import tokenize_text
 
 os.makedirs("../models", exist_ok=True)
 
+
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
 
-    # NOTE: batch_size is "images per batch"; each image has ~10 words on average,
-    # so effective word-crops per batch can be ~10x this. 
-    # num_workers is for data loading parallelism, might break fi you're on Windows (in which case set to 0)
     train_loader, val_loader, test_loader, val_subset = build_loaders(
-        batch_size=6, num_workers=4
+        batch_size=24, num_workers=6
     )
-    # Could use a larger batch size but I need to use my laptop while the model trains
 
-    model = SynthText_CRNN(max_steps=21).to(device)  # Decoder limited to 21 characters (99.9% of English words are <= this length)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    model = SynthText_CRNN(max_steps=21).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.CrossEntropyLoss(ignore_index=0)
     scaler = torch.amp.GradScaler(enabled=(device.type=='cuda'))
 
     save_location = "../models/OCR_ATTN.pth"
+    
     global_step = 0
+    best_val_loss = float('inf')
+    patience_counter = 0
+
     if os.path.isfile(save_location):
         print("Loading checkpoint...")
         ckpt = torch.load(save_location, map_location=device)
         model.load_state_dict(ckpt['model_state'])
         optimizer.load_state_dict(ckpt['optim_state'])
+        
+        # Restore metadata to prevent "Amnesia"
         global_step = ckpt.get('global_step', 0)
+        best_val_loss = ckpt.get('best_val_loss', float('inf'))
+        patience_counter = ckpt.get('patience_counter', 0)
+        
+        print(f"Resumed from Step {global_step} | Best Loss: {best_val_loss:.4f} | Patience: {patience_counter}")
 
-    # Early stopping and divergence parameters
-    best_val_loss = float('inf')
-    patience_counter = 0
-    patience_limit = 5  # Number of validation checks to wait for improvement
-    min_delta = 0.001    # Threshold for significant improvement
-    val_interval = 5000
-    divergence_threshold = 2.0  # Val loss cannot be > 2x Train loss
+    patience_limit = 1
+    min_delta = 0.001
+    val_interval = 700
+    divergence_threshold = 2.0 
 
     def get_infinite_loader(loader):
         while True:
@@ -63,8 +65,8 @@ def main():
     train_gen = get_infinite_loader(train_loader)
 
     try:
-        print("Starting infinite training loop...")
-        while True:
+        print("Starting training loop...")
+        while True: # "Epochs" are basically obsolete since SynthText is so big
             model.train()
             crops, texts = next(train_gen)
             
@@ -72,7 +74,8 @@ def main():
                 continue
             
             batch_inputs = crops.to(device)
-            tokenized_list = [tokenize_text(t, max_len=model.max_steps) for t in texts]
+            # Tokenize manually since loader now returns raw strings
+            tokenized_list = [torch.tensor(tokenize_text(t, max_len=model.max_steps), dtype=torch.long) for t in texts]
             batch_targets = torch.stack(tokenized_list).to(device)
 
             optimizer.zero_grad()
@@ -99,13 +102,12 @@ def main():
                 print(f"\n[CHECKPOINT] Step {global_step}: Running Validation...")
                 
                 with torch.no_grad():
-                    # Check first 100 batches of validation for speed
                     for i, (v_crops, v_texts) in enumerate(val_loader):
-                        if i > 100: break
+                        if i > 100: break # Validate on fixed subset for speed
                         if v_crops is None or len(v_texts) == 0: continue
                         
                         v_inputs = v_crops.to(device)
-                        v_tokens = torch.stack([tokenize_text(t, max_len=model.max_steps) for t in v_texts]).to(device)
+                        v_tokens = torch.stack([torch.tensor(tokenize_text(t, max_len=model.max_steps), dtype=torch.long) for t in v_texts]).to(device)
                         
                         v_out = model(v_inputs)
                         v_T, v_B, v_C = v_out.shape
@@ -131,6 +133,8 @@ def main():
                         'global_step': global_step,
                         'model_state': model.state_dict(),
                         'optim_state': optimizer.state_dict(),
+                        'best_val_loss': best_val_loss,   # Persist this!
+                        'patience_counter': patience_counter # Persist this!
                     }, save_location)
                 else:
                     patience_counter += 1
@@ -142,11 +146,13 @@ def main():
 
     except KeyboardInterrupt:
         print("\nTraining interrupted by user. Saving checkpoint.")
-        print("DO not ctrl + C again, otherwise progress might be lost.")
+        print("DON'T ctrl + C again, otherwise progress might be lost.")
         torch.save({
             'global_step': global_step,
             'model_state': model.state_dict(),
             'optim_state': optimizer.state_dict(),
+            'best_val_loss': best_val_loss,
+            'patience_counter': patience_counter
         }, save_location)
 
 if __name__ == "__main__":

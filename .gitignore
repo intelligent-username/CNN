@@ -18,5 +18,7 @@ ENV/
 *OLD*.pth
 
 REM.md
+test.ipynb
+test.py
 
 *~*

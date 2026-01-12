@@ -43,7 +43,7 @@ class CaptionedSynthTextWordDataset(Dataset):
                  cache_dir: str | None = None, target_height: int = 32, 
                  max_width: int = 512, max_cap: int | None = None):
         self.cache_dir = cache_dir or _synthtext_cache_dir()
-        print(f"[DEBUG] Loading dataset split: {split}...")
+        print(f"[LOADER] Loading dataset split: {split}...")
         self.ds = load_dataset("wendlerc/CaptionedSynthText", cache_dir=self.cache_dir, split=split)
         self.transform = transform or transforms.ToTensor()
         self.target_height, self.max_width = int(target_height), int(max_width)
@@ -53,15 +53,16 @@ class CaptionedSynthTextWordDataset(Dataset):
         index_path = os.path.join(self.cache_dir, f"{split}_index{suffix}.json")
         
         if os.path.exists(index_path):
-            print(f"[DEBUG] Loading cached index from {index_path}")
+            print(f" Loading cached index from {index_path}")
             with open(index_path, "r") as f: self.index = json.load(f)
         else:
-            print(f"[DEBUG] No index found. Building index (Cap: {max_cap})...")
+            print(f" No index found. Building index (Cap: {max_cap})...")
+            print("This will take a while...")
             self.index = []
             for i, item in enumerate(self.ds):
                 # Stop early if cap is reached
                 if max_cap is not None and i >= max_cap:
-                    print(f"[DEBUG] Hit max_cap {max_cap}. Stopping index.")
+                    print(f" Hit max_cap {max_cap}. Stopping index.")
                     break
                     
                 if i % 5000 == 0: print(f"[PROGRESS] Indexed {i} images...")
@@ -71,7 +72,7 @@ class CaptionedSynthTextWordDataset(Dataset):
             
             with open(index_path, "w") as f: json.dump(self.index, f)
         
-        print(f"[DEBUG] Dataset initialized with {len(self.index)} words.")
+        print(f"[LOADER] Dataset initialized with {len(self.index)} words.")
 
     def __len__(self) -> int: return len(self.index)
 
@@ -80,7 +81,6 @@ class CaptionedSynthTextWordDataset(Dataset):
         item = self.ds[img_idx]
         img, ocr = item["jpg"], item.get("json", {}).get("ocr_annotation", {})
         
-        # Safety check for bounds
         if word_idx >= len(ocr["text"]): return None
         
         text = ocr["text"][word_idx].strip()
@@ -96,8 +96,8 @@ class CaptionedSynthTextWordDataset(Dataset):
         
         return self.transform(crop_img), text
 
-def build_loaders(batch_size: int = 16, num_workers: int = 8, use_test: bool = True, 
-                  val_frac: float = 0.02, test_frac: float = 0.02, seed: int = 1337,
+def build_loaders(batch_size: int = 16, num_workers: int = 6, use_test: bool = True, 
+                  val_frac: float = 0.02, test_frac: float = 0.02, seed: int = 777,
                   max_cap: int | None = None):
     
     # Pass max_cap to dataset init
