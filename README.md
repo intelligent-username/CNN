@@ -291,6 +291,7 @@ CNN/
 │   ├─── display_s9.py          # Sample SynthText images
 │   │                           ^^ (not crucial)
 │   ├─── import_e.py         # Download EMNIST
+|   └─── import_st.py        # Download SynthText
 │
 |
 ├── .gitignore              # files to ignore in git

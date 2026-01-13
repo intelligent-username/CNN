@@ -24,6 +24,7 @@ class LSTM(nn.Module):
     num_layers: int
     bidirectional: bool
     lstm: nn.LSTM
+    ln: nn.LayerNorm
 
     def __init__(self, input_size, hidden_size, num_layers, bidirectional=True):
         super().__init__()
@@ -39,9 +40,14 @@ class LSTM(nn.Module):
             bidirectional=bidirectional,
             batch_first=True
         )
+        
+        # LayerNorm to stabilize gradients
+        output_size = hidden_size * 2 if bidirectional else hidden_size
+        self.ln = nn.LayerNorm(output_size)
 
     def forward(self, x):
         output, cells = self.lstm(x)
+        output = self.ln(output)
         return output
 
 
@@ -68,11 +74,7 @@ class AdditiveAttention(nn.Module):
 
 
 class ConvLayer(nn.Module):
-    """An individual convolution layer"""
-
-    conv: nn.Module
-    activation: nn.Module
-    pool: nn.Module
+    """An individual convolution layer with BatchNorm"""
 
     def __init__(
         self,
@@ -89,17 +91,22 @@ class ConvLayer(nn.Module):
     ):
         super().__init__()
         self.conv = conv_type(in_channels, out_channels, kernel_size, stride, padding)
+        self.bn = nn.BatchNorm2d(out_channels)
         self.activation = activation_type()
         self.pool = pool_type(pool_kernel, pool_stride)
 
     def forward(self, x):
-        x = self.pool(self.activation(self.conv(x)))
+        x = self.conv(x)
+        x = self.bn(x)
+        x = self.activation(x)
+        x = self.pool(x)
         return x
+
 
 class RecBlock(nn.Module):
     """The block of Recurrent Layers"""
     # NOTE: was 2 now is 1
-    
+
     layers: List[nn.Module]
 
     def __init__(self, layers: List[nn.Module]):
@@ -125,13 +132,13 @@ class ConvBlock(nn.Module):
         return x
 
 class SynthText_CRNN(nn.Module):
-    """The final OCR model with all of the blocks together"""
+    """Final OCR with all blocks together"""
     conv_block: ConvBlock
     rec_block: RecBlock
     dense_layer: nn.Linear
 
     def __init__(self, num_classes: int = VOCAB_SIZE, max_steps: int = MAX_LABEL_LEN):
-        super(SynthText_CRNN, self).__init__()
+        super().__init__()
 
         self.num_classes = num_classes
         self.max_steps = max_steps
@@ -151,38 +158,54 @@ class SynthText_CRNN(nn.Module):
             LSTM(input_size=256, hidden_size=256, num_layers=2, bidirectional=True),
         ]
         self.rec_block = RecBlock(layers=self.layerz)
+        
+        # LayerNorm after encoder
+        self.encoder_ln = nn.LayerNorm(512)
 
-        # Attention layer integrates with decoder hidden states
         self.attention = AdditiveAttention(enc_dim=512, dec_dim=512, attn_dim=256)
-
-        # Decoder LSTM for character-by-character prediction
-        self.decoder = nn.LSTMCell(input_size=512, hidden_size=512)
-
+        self.decoder = nn.LSTMCell(input_size=512 + num_classes, hidden_size=512)  # include previous token embedding
+        self.decoder_ln = nn.LayerNorm(512)  # LayerNorm after decoder cell
+        self.embed = nn.Embedding(num_classes, num_classes)  # one-hot embedding
         self.dense_layer = nn.Linear(512, num_classes)
 
-    def forward(self, x):
+    def forward(self, x, targets=None, teacher_forcing_ratio=0.5):
+        """
+        x: images (B, C, H, W)
+        targets: LongTensor (B, max_steps) with ground-truth indices
+        """
         x = self.conv_block(x)
-        # Collapse height dimension to 1 for sequence modeling over width.
         if x.dim() == 4 and x.size(2) != 1:
             x = F.adaptive_avg_pool2d(x, (1, x.size(3)))
         x = x.squeeze(2)
         x = x.permute(0, 2, 1)
 
-        encoder_seq = self.rec_block(x)
+        encoder_seq = self.rec_block(x)  # (B, T, E)
+        encoder_seq = self.encoder_ln(encoder_seq)  # LayerNorm stabilization
 
         B, T, E = encoder_seq.size()
         outputs = []
 
-        h = torch.zeros(B, 512, device=x.device)
-        c = torch.zeros(B, 512, device=x.device)
+        # initialize decoder hidden state from mean of encoder
+        h = torch.tanh(encoder_seq.mean(dim=1) @ nn.Parameter(torch.randn(E, 512, device=x.device)))
+        c = torch.zeros_like(h)
 
-        steps = self.max_steps
-        for _ in range(steps):
-            context, _ = self.attention(encoder_seq, h)
-            h, c = self.decoder(context, (h, c))
+        # start token (assume 0)
+        input_token = torch.zeros(B, dtype=torch.long, device=x.device)
+
+        for t in range(self.max_steps):
+            token_embed = self.embed(input_token)  # (B, num_classes)
+            decoder_input = torch.cat([encoder_seq.mean(dim=1), token_embed], dim=1)
+            h, c = self.decoder(decoder_input, (h, c))
+            h = self.decoder_ln(h)  # LayerNorm to stabilize decoder gradients
             out = self.dense_layer(h)
             outputs.append(out.unsqueeze(1))
 
-        outputs = torch.cat(outputs, dim=1)
-        outputs = outputs.permute(1, 0, 2)
-        return outputs
+            # RNN's teacher forcing
+            if targets is not None and torch.rand(1).item() < teacher_forcing_ratio:
+                input_token = targets[:, t]
+            else:
+                input_token = out.argmax(dim=1)
+
+        outputs = torch.cat(outputs, dim=1)  # (B, max_steps, num_classes)
+        return outputs.permute(1, 0, 2)      # (max_steps, B, num_classes)
+

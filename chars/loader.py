@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from torchvision import transforms
 from torch.nn.utils.rnn import pad_sequence
 
+from text import MAX_LABEL_LEN, tokenize_text
+
 def _project_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -24,29 +26,31 @@ def _quad_to_bbox(quad: List[List[float]], w: int, h: int) -> Tuple[int, int, in
     return (x1, y1, x2, y2) if x2 > x1 and y2 > y1 else (0, 0, w, h)
 
 def collate_fn(batch):
-    """Pads variable width images to form a valid batch."""
-    # Filter out None/Empty items before batching
-    batch = [b for b in batch if b is not None and b[0] is not None]
+    """Pads variable width images and stacks pre-tokenized targets."""
+    batch = [b for b in batch if b is not None and b[0] is not None and b[1] is not None]
     if not batch:
-        return torch.tensor([]), []
+        return torch.empty(0), torch.empty(0, dtype=torch.long)
         
-    images, texts = zip(*batch)
+    images, targets = zip(*batch)
     # Reversing dimensions for pad_sequence: (C, W, H) -> (W, C, H)
     images = [img.permute(2, 0, 1) for img in images]
     padded_imgs = pad_sequence(images, batch_first=True, padding_value=0)
     # Back to (B, C, H, W)
     padded_imgs = padded_imgs.permute(0, 2, 3, 1)
-    return padded_imgs, texts
+    target_tensor = torch.stack(targets)
+    return padded_imgs, target_tensor
 
 class CaptionedSynthTextWordDataset(Dataset):
     def __init__(self, split: str = "train", transform: Callable | None = None, 
                  cache_dir: str | None = None, target_height: int = 32, 
-                 max_width: int = 512, max_cap: int | None = None):
+                 max_width: int = 512, max_cap: int | None = None,
+                 max_steps: int = MAX_LABEL_LEN):
         self.cache_dir = cache_dir or _synthtext_cache_dir()
         print(f"[LOADER] Loading dataset split: {split}...")
         self.ds = load_dataset("wendlerc/CaptionedSynthText", cache_dir=self.cache_dir, split=split)
         self.transform = transform or transforms.ToTensor()
         self.target_height, self.max_width = int(target_height), int(max_width)
+        self.max_steps = int(max_steps)
         
         # Suffix index file with cap if provided to avoid overwriting full index
         suffix = f"_{max_cap}" if max_cap else ""
@@ -94,14 +98,17 @@ class CaptionedSynthTextWordDataset(Dataset):
             new_w = min(max(int(round(crop_img.size[0] * ratio)), 1), self.max_width)
             crop_img = crop_img.resize((new_w, self.target_height), resample=Image.BILINEAR)
         
-        return self.transform(crop_img), text
+        tokens = tokenize_text(text, max_len=self.max_steps)
+        token_tensor = torch.tensor(tokens, dtype=torch.long)
+        return self.transform(crop_img), token_tensor
 
 def build_loaders(batch_size: int = 16, num_workers: int = 6, use_test: bool = True, 
                   val_frac: float = 0.02, test_frac: float = 0.02, seed: int = 777,
+                  max_steps: int = MAX_LABEL_LEN,
                   max_cap: int | None = None):
     
-    # Pass max_cap to dataset init
-    full = CaptionedSynthTextWordDataset(split="train", max_cap=max_cap)
+    # Pass max_cap and max_steps to dataset init
+    full = CaptionedSynthTextWordDataset(split="train", max_cap=max_cap, max_steps=max_steps)
     n = len(full)
     
     val_n = int(n * val_frac)

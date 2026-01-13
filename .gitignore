@@ -18,6 +18,7 @@ ENV/
 *OLD*.pth
 
 REM.md
+utils/test.ipynb
 test.ipynb
 test.py
 
