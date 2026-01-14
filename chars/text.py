@@ -9,9 +9,9 @@ import torch
 import torch.nn.functional as F
 
 
-# Training code uses ignore_index=0, so keep 0 as padding.
 PAD_ID = 0
-UNK_ID = 1
+SOS_ID = 1  # Start of sequence
+UNK_ID = 2
 
 # A pragmatic default charset for SynthText-like data.
 _CHARS = (
@@ -24,20 +24,21 @@ _CHARS = (
 CHAR_TO_ID: Dict[str, int] = {c: i + 2 for i, c in enumerate(_CHARS)}
 ID_TO_CHAR: Dict[int, str] = {i: c for c, i in CHAR_TO_ID.items()}
 
-VOCAB_SIZE = len(_CHARS) + 2
+EOS_ID = len(_CHARS) + 2
+VOCAB_SIZE = EOS_ID + 1
 
-# Must match the decoder steps used by SynthText_CRNN.
 MAX_LABEL_LEN = 25
 
 
 def tokenize_text(text: str, max_len: int = MAX_LABEL_LEN) -> List[int]:
     """Convert a string into a fixed-length list of token IDs."""
-    text = text or ""
     ids = [CHAR_TO_ID.get(ch, UNK_ID) for ch in text]
-    ids = ids[:max_len]
+    ids = ids[:max_len-1]  # reserve 1 for EOS
+    ids.append(EOS_ID)
     if len(ids) < max_len:
-        ids = ids + [PAD_ID] * (max_len - len(ids))
+        ids += [PAD_ID] * (max_len - len(ids))
     return ids
+
 
 
 def _pad_images_to_max_size(crops: List[torch.Tensor]) -> torch.Tensor:
@@ -70,4 +71,9 @@ def collate_fn(crops: list, tokenized_targets: list, device: torch.device):
 
     batch_inputs = torch.stack(padded).to(device)
     batch_targets = torch.tensor(tokenized_targets, dtype=torch.long).to(device)
+
     return batch_inputs, batch_targets
+
+def make_len_mask(lengths: torch.Tensor, max_len: int):
+    return torch.arange(max_len, device=lengths.device)[None, :] >= lengths[:, None]
+

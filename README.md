@@ -249,28 +249,48 @@ ResNet (Residual Network) introduced the concept of residual connections, which 
 
 ## Other Considerations
 
-In addition to the core CNN architecture, there are several add-ons and techniques that have been added to enhance performance, but don't really need to be discussed in detail here:
+In addition to the core CNN architecture, there are several useful techniques, some mathematical/statistical and some engineerning-based, to consider:
 
-- **Loss Function**: we often use Cross-Entropy Loss, but there are other options for a CNN, like Hinge Loss or, CTCLoss (which was going to be used initially).
-- **Batch Normalization**: In order to "stabilize" the training process, we make sure the numbers in the neural network don't get too big or too small. For each batch of data, it calculates the average and spread (how much the numbers vary) of the outputs from a layer.
-  1) For the current mini-batch, find the mean and the variance.
-  2) Adjust the inputs to have an average of zero and a variance of one.
-  - These are often added after each convolution layer. As a result, the training becomes smoother and faster and overfitting is reduced
-- **Regularization**: this is how we prevent overfitting. Often, we turn to dropout. Dropout is the technique of randomly setting a fraction of the input units to zero during training. This helps prevent overfitting by forcing the network to learn more robust features. We may also use other regularization techniques, such as weight decay.
-- **Data Augmentation**: This involves generating additional training data by applying random transformations (e.g., rotations, flips, scaling) to the existing dataset. Data augmentation helps improve the model's generalization by exposing it to a wider variety of examples. It might also involve directly modifying the current state of the training data, such as seen in the [EMNIST augmentation script](char/loader.py).
-- **Attention Mechanisms**: Attention mechanisms can be integrated into CNNs to allow the model to focus on specific parts of the input image that are more relevant for the task at hand. This can improve performance, especially in tasks like image captioning or object detection.
-- **Early Stopping**: Early stopping is when we check for some condition and stop the gradient descent algorithm if it's met. For example, in the two CNNs implemented in this project, we stop training if the validation loss hasn't improved for 2 consecutive epochs. This saves time and resources, prevents overfitting, and gets rid of any need for re-training. But be careful not to stop too early, set the patience term appropriately.
-- **Transfer Learning**: This technique involves using a pre-trained CNN model (trained on a large dataset like ImageNet) as a starting point for a new task. By fine-tuning the pre-trained model on a smaller dataset, we can leverage the learned features and reduce training time. We won't be doing this, but it can be done with our models, once they are made.
-- **Checkpointing**: is when we save a model's state to continue training later. This isn't as much of an architectural decision as it is a practical one. Note that, if continuing training for too long, you risk overfitting, so ensure that strong regularization is in place or that the epochs are limited.
+1) **Loss Function**: we often use Cross-Entropy Loss, but there are other options for a CNN, like Hinge Loss or, CTCLoss (which was going to be used initially).
+
+2) **Regularization**: this is how we prevent overfitting. Often, we turn to dropout. Dropout is the technique of randomly setting a fraction of the input units to zero during training. This helps prevent overfitting by forcing the network to learn more robust features. We may also use other regularization techniques, such as weight decay.
+
+3) **Data Augmentation**: This involves generating additional training data by applying random transformations (e.g., rotations, flips, scaling) to the existing dataset. Data augmentation helps improve the model's generalization by exposing it to a wider variety of examples. It might also involve directly modifying the current state of the training data, such as seen in the [EMNIST augmentation script](char/loader.py).
+
+4) **Learning Rate Scheduling**: Adjusting the learning rate as we converge, for example by using Adam.
+
+5) **Early Stopping**: Early stopping is when we check for some condition and stop the gradient descent algorithm if it's met. For example, in the two CNNs implemented in this project, we stop training if the validation loss hasn't improved for 2 consecutive epochs. This saves time and resources, prevents overfitting, and gets rid of any need for re-training. But be careful not to stop too early, set the patience term appropriately.
+
+6) **Checkpointing**: is when we save a model's state to continue training later. This isn't as much of an architectural decision as it is a practical one. Note that, if continuing training for too long, you risk overfitting, so ensure that strong regularization is in place or that the epochs are limited. This can be made even more specific by making use of atomic saving, which essentially means putting a marker for the "best" model seen so far (usually based on validation loss) and only saving over it when a new "best" is found, as seen in our [SynthText OCR Training](chars/train.py) script.
+
+7) **Transfer Learning**: This technique involves using a pre-trained CNN model (trained on a large dataset like ImageNet) as a starting point for a new task. By fine-tuning the pre-trained model on a smaller dataset, we can leverage the learned features and reduce training time. In this project, we won't be doing this, other than by importing the checkpoitned models.
+
+8) **Batch Normalization**: In order to "stabilize" the training process, we make sure the numbers in the neural network don't get too big or too small. For each batch of data, it calculates the average and spread (how much the numbers vary) of the outputs from a layer.
+
+    1. For the current mini-batch, find the mean and the variance.
+    2. Subtract the mean and divide by the standard deviation. This will adjust the inputs to have an average of zero and a variance of one.
+
+    These are often added after each convolution layer. As a result, the training becomes smoother and faster and overfitting is reduced. Extra steps may be warranted to pre-calculate the mean and variance.
+
+9) **Teacher Forcing**: In "bigger" OCR models, we're trying to recognize many characters back-to-back, in which case wrongly recognizing an earlier character will influence the recognition of the next character. Teacher Forcing is when the correct categorization of an adjacent characeter is given to the model during the forward pass.
+
+10) **Mixed Precision Training**: This technique involves using lower-precision data types (like float16) for certain parts of the model during training, while keeping others in higher precision (like float32). This can significantly reduce memory usage and speed up computations without sacrificing much accuracy. Modern GPUs often have specialized hardware to support mixed precision training efficiently.
+
+11) **Attention Mechanisms**: Attention mechanisms can be integrated into CNNs to allow the model to focus on specific parts of the input image that are more relevant for the task at hand. This can improve performance, especially in tasks like image captioning or object detection.
+
 - Carefully consider the **training process**, for example, implement *graceful exits*, appropriate gradient descent *batch sizes* (depending on your hardware), and so forth, as these models can take a while to train. Even the relatively simple ones created in this project took a long time to train.
 
 These ideas will require further reading in their own right. All of them are useful. They don't all need to be used at once.
 
 ## Project Details
 
-In this project, we implement two CNNs: one for single, isolated character recognition using the Expanded MNIST dataset, and one for real-world end-to-end OCR using the SynthText dataset. The former uses a VGG-style architecture, while the latter implements a similar VGG-style architecture with added [recurrence](https://www.github.com/intelligent-username/RNN) to model for the sequence-like nature of the words, phrases, and so forth.
+This project consists of two parts: the theoretical part (this writeup) and all of the learning, writing, and mastery that comes with it, as well as the implementation parts: two CNNs.
 
-### File structure
+The first CNN is for single, isolated character recognition using the Expanded MNIST dataset. It's hosted in a [separate project](https://github.com/intelligent-username/OCR). It uses an a VGG-style architecture and is relatively simple. Training and understanding this is rather trivial, once the rest of this writeup is understood.
+
+The second is a real-world end-to-end engine trained on the SynthText dataset. It's used for *actual* text recognition. Given an image of a word (whether it be typed, printed, or hand-written), this model will 'transcribe' it into text. This is useful for many applications, such as document reading, cyber vision
+
+### File Structure
 
 ```md
 CNN/
@@ -282,22 +302,16 @@ CNN/
 │   ├─── EMNIST/            # The EMNIST dataset
 │   └─── SynthText/         # The SynthText dataset
 │
-├── imgs/                   # images used in this writeup
-|
-├── models/                 # models from running this project
+├── models/                 # models from this project
 |
 ├── utils/                  # (Python) source code for implementations
 │   ├─── display_e.py           # Sample EMNIST images
 │   ├─── display_s9.py          # Sample SynthText images
 │   │                           ^^ (not crucial)
-│   ├─── import_e.py         # Download EMNIST
-|   └─── import_st.py        # Download SynthText
+│   ├─── import_e.py         # Downloads EMNIST
+|   └─── import_st.py        # Downloads SynthText
 │
-|
-├── .gitignore              # files to ignore in git
-├── README.md               # this file
-├── LICENSE                 # MIT License declaration
-└──requirements.txt         # Python dependencies
+└── README.md               # this file
 ```
 
 ### Installation

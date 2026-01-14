@@ -32,9 +32,11 @@ def collate_fn(batch):
         return torch.empty(0), torch.empty(0, dtype=torch.long)
         
     images, targets = zip(*batch)
+    # Compute mean padding value from batch statistics
+    batch_mean = torch.stack([img.mean() for img in images]).mean().item()
     # Reversing dimensions for pad_sequence: (C, W, H) -> (W, C, H)
     images = [img.permute(2, 0, 1) for img in images]
-    padded_imgs = pad_sequence(images, batch_first=True, padding_value=0)
+    padded_imgs = pad_sequence(images, batch_first=True, padding_value=batch_mean)
     # Back to (B, C, H, W)
     padded_imgs = padded_imgs.permute(0, 2, 3, 1)
     target_tensor = torch.stack(targets)
@@ -48,7 +50,10 @@ class CaptionedSynthTextWordDataset(Dataset):
         self.cache_dir = cache_dir or _synthtext_cache_dir()
         print(f"[LOADER] Loading dataset split: {split}...")
         self.ds = load_dataset("wendlerc/CaptionedSynthText", cache_dir=self.cache_dir, split=split)
-        self.transform = transform or transforms.ToTensor()
+        self.transform = transform or transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.45160, 0.47395, 0.46847], std=[0.28209, 0.266675, 0.27435])
+        ])
         self.target_height, self.max_width = int(target_height), int(max_width)
         self.max_steps = int(max_steps)
         

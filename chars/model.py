@@ -9,10 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from text import MAX_LABEL_LEN, VOCAB_SIZE
-
-# NOTE: nn.Module inheritance enables PyTorch's autograd functionality automatically
-# So don't touch it
+from text import MAX_LABEL_LEN, VOCAB_SIZE, SOS_ID, EOS_ID, make_len_mask
 
 class LSTM(nn.Module):
     """
@@ -24,7 +21,6 @@ class LSTM(nn.Module):
     num_layers: int
     bidirectional: bool
     lstm: nn.LSTM
-    ln: nn.LayerNorm
 
     def __init__(self, input_size, hidden_size, num_layers, bidirectional=True):
         super().__init__()
@@ -41,13 +37,16 @@ class LSTM(nn.Module):
             batch_first=True
         )
         
-        # LayerNorm to stabilize gradients
-        output_size = hidden_size * 2 if bidirectional else hidden_size
-        self.ln = nn.LayerNorm(output_size)
+        for name, param in self.lstm.named_parameters():
+            if 'weight_hh' in name:
+                nn.init.orthogonal_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param, 0)
+                n = param.size(0)
+                param.data[n//4:n//2].fill_(1.0)
 
     def forward(self, x):
         output, cells = self.lstm(x)
-        output = self.ln(output)
         return output
 
 
@@ -63,8 +62,6 @@ class AdditiveAttention(nn.Module):
         self.v = nn.Linear(attn_dim, 1, bias=False)
 
     def forward(self, encoder_outputs, hidden):
-        # encoder_outputs: (B, T, E)
-        # hidden: (B, D)
         enc = self.enc_proj(encoder_outputs)
         dec = self.dec_proj(hidden).unsqueeze(1)
         scores = self.v(torch.tanh(enc + dec))
@@ -159,13 +156,20 @@ class SynthText_CRNN(nn.Module):
         ]
         self.rec_block = RecBlock(layers=self.layerz)
         
-        # LayerNorm after encoder
         self.encoder_ln = nn.LayerNorm(512)
-
+        self.init_h = nn.Linear(512, 512)
         self.attention = AdditiveAttention(enc_dim=512, dec_dim=512, attn_dim=256)
-        self.decoder = nn.LSTMCell(input_size=512 + num_classes, hidden_size=512)  # include previous token embedding
-        self.decoder_ln = nn.LayerNorm(512)  # LayerNorm after decoder cell
-        self.embed = nn.Embedding(num_classes, num_classes)  # one-hot embedding
+        self.decoder = nn.LSTMCell(input_size=512 + 128, hidden_size=512)
+        
+        for name, param in self.decoder.named_parameters():
+            if 'weight_hh' in name:
+                nn.init.orthogonal_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param, 0)
+                n = param.size(0)
+                param.data[n//4:n//2].fill_(1.0)
+        
+        self.embed = nn.Embedding(num_classes, 128)
         self.dense_layer = nn.Linear(512, num_classes)
 
     def forward(self, x, targets=None, teacher_forcing_ratio=0.5):
@@ -179,33 +183,50 @@ class SynthText_CRNN(nn.Module):
         x = x.squeeze(2)
         x = x.permute(0, 2, 1)
 
-        encoder_seq = self.rec_block(x)  # (B, T, E)
-        encoder_seq = self.encoder_ln(encoder_seq)  # LayerNorm stabilization
+        encoder_seq = self.rec_block(x)
+        encoder_seq = self.encoder_ln(encoder_seq)
 
         B, T, E = encoder_seq.size()
-        outputs = []
+        enc_lens = torch.full(
+            (B,),
+            T,
+            device=x.device,
+            dtype=torch.long
+        )
 
-        # initialize decoder hidden state from mean of encoder
-        h = torch.tanh(encoder_seq.mean(dim=1) @ nn.Parameter(torch.randn(E, 512, device=x.device)))
+        self.attention.mask = make_len_mask(enc_lens, T)
+
+        idx = (enc_lens - 1).clamp(min=0)
+        h0 = encoder_seq[torch.arange(B), idx]
+
+        h = torch.tanh(self.init_h(h0))
         c = torch.zeros_like(h)
 
-        # start token (assume 0)
-        input_token = torch.zeros(B, dtype=torch.long, device=x.device)
+        input_token = torch.full(
+            (B,),
+            SOS_ID,
+            dtype=torch.long,
+            device=x.device
+        )
 
+        outputs = []
+        
         for t in range(self.max_steps):
-            token_embed = self.embed(input_token)  # (B, num_classes)
-            decoder_input = torch.cat([encoder_seq.mean(dim=1), token_embed], dim=1)
+            token_embed = self.embed(input_token)
+            context, _ = self.attention(encoder_seq, h)
+            decoder_input = torch.cat([context, token_embed], dim=1)
             h, c = self.decoder(decoder_input, (h, c))
-            h = self.decoder_ln(h)  # LayerNorm to stabilize decoder gradients
             out = self.dense_layer(h)
             outputs.append(out.unsqueeze(1))
 
-            # RNN's teacher forcing
             if targets is not None and torch.rand(1).item() < teacher_forcing_ratio:
                 input_token = targets[:, t]
             else:
                 input_token = out.argmax(dim=1)
 
-        outputs = torch.cat(outputs, dim=1)  # (B, max_steps, num_classes)
-        return outputs.permute(1, 0, 2)      # (max_steps, B, num_classes)
+            if (input_token == EOS_ID).all():
+                break
 
+
+        outputs = torch.cat(outputs, dim=1)
+        return outputs

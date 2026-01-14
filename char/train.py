@@ -47,7 +47,7 @@ def main():
 
     scaler = torch.amp.GradScaler('cuda')
 
-    # NOTE: Empirically, I have found that, after exactly 10 epochs, training loss goes down but validation loss starts going up. 
+    # NOTE: Empirically, I have found that, after about 10 epochs, training loss goes down but validation loss starts going up. 
     # In most cases, that would be a good place to stop.
     # But, with THIS data, even when validation loss is increasing, since it's so augmented and the model is being tuned, letting it "overfit" a little bit kind of makes it perform better on the actual test set.
 
@@ -55,7 +55,7 @@ def main():
     # just un-comment the 'patience' counter, threshold, and checker
     # on lines 63, 64, 65, and 128-136
 
-    num_epochs = 1
+    num_epochs = 12
 
     # If validation gets worse for too long, stop training
 
@@ -170,13 +170,12 @@ def main():
     print("Model saved.")
 
 if __name__ == "__main__":
-    # Just for safety, we *could* add:
+    # For safety, we *could* add:
     
     # import torch.multiprocessing as mp
     # mp.set_start_method('fork', force=True)
 
     # But it'll probably break on Windows 
     # And it's not necessary on UNIX-like systems
-    # But might need later
 
     main()
