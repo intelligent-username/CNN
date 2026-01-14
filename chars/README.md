@@ -1,18 +1,18 @@
 # English Word Recognition
 
-Here, an end-to-end CNN model is built to recognize entire words from images. This is one step up from recognizing individual characters, as it involves understanding the context and structure of words.
+This is an end-to-end CNN model to recognize entire words from images.
 
 This type of CNN trains directly on words, not on letters. If we had made a model that was really good at recognizing letters, we would have to take each picture, split it into a series of letters, recognize each letter individually, and then piece them back together into words. Although in theory this sounds like a simpler approach than training on massive amounts of whole words, in practice it often leads to errors compounding and worse overall performance.
 
 One issue with the former approach is the segmentation: there are countless different fonts, styles, spacings, and sizes. Another issue is that it's simply slower.
 
-Recent advances, like [DeepSeek-OCR](https://deepseek.ai/blog/deepseek-ocr-context-compression)'s convolutional token aggregation, extend this by bundling words into compact visual representations for multimodal decoding, enabling 200K+ pages/day processing on single GPUs without explicit segmentation.
+Recent advances, like [DeepSeek-OCR](https://deepseek.ai/blog/deepseek-ocr-context-compression)'s convolutional token aggregation, extend this by bundling words into compact visual representations for multimodal decoding, enabling 200K+ pages/day processing on single GPUs without explicit segmentation. This specific model uses recent CNN technqiues such as attention mechanisms and bidirectional LSTMs to better capture context and sequential dependencies in text, however it's of course not as advanced as some of the biggest models.
 
 ## Datasets
 
 ![Sample of SynthText](../imgs/SynthText.png)
 
-One famous dataset **Synth90k**, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition](https://arxiv.org/abs/1406.2227)) paper by Jaderberg et al. (2014).
+One famous dataset **Synth90k**, from the [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition](https://arxiv.org/abs/1406.2227) paper by Jaderberg et al. (2014).
 
 It consists of a bunch of synthetically generated images of words in various fonts, colors, backgrounds, and distortions. For future implementations, one can take inspiration from this paper to, for example, create a more efficient version of the same dataset, make the data more complex, or even create the same kind of dataset for a different language.
 
@@ -30,8 +30,7 @@ Then, the data also needs preprocessing, since the text is embedded in larger im
 
 The CNN architecture itself is the focus of *this* project.
 
-We may want to follow the next paper by Jaderberg et al, [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition
-](https://arxiv.org/abs/1507.05717) (2014). It three introduces different architectures: DICT, CHAR, and NGRAM. DICT is the main focus, and so it'll be the one that I'm implementing here. The DICT architecutre consists of:
+We may want to follow the next paper by Jaderberg et al, [Synthetic Data and Artificial Neural Networks for Natural Scene Text Recognition](https://arxiv.org/abs/1507.05717) (2014). It three introduces different architectures: DICT, CHAR, and NGRAM. DICT is the main focus, and so it'll be the one that I'm implementing here. The DICT architecutre consists of:
 
 - 4 Convolutional Layers
   - Conv1: 64 filters, 5×5, stride 1, pad; ReLU → LRN → MaxPool(2×2)
